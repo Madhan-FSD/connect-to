@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { userApi, childApi } from "@/lib/api";
 import ProfileSection from "./ProfileSection";
+import { Label } from "../ui/label";
 
 export default function ProfileDetailsManager({
   user,
@@ -30,8 +31,8 @@ export default function ProfileDetailsManager({
   const [editingCore, setEditingCore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
 
   const [formData, setFormData] = useState(profileData || {});
 
@@ -51,13 +52,25 @@ export default function ProfileDetailsManager({
   const isAdultViewingSelf = !isChildProfile && isAdultRole;
   const userCanEditMedia = isParentViewingChild || isAdultViewingSelf;
 
-  const handleChange = (key: string, value: any) =>
-    setFormData((prev: any) => ({ ...prev, [key]: value }));
+  const handleChange = (key, value) => {
+    if (key.includes(".")) {
+      const [outerKey, innerKey] = key.split(".");
+      setFormData((prev) => ({
+        ...prev,
+        [outerKey]: {
+          ...(prev[outerKey] || {}),
+          [innerKey]: value,
+        },
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [key]: value }));
+    }
+  };
 
   const saveCoreProfile = async () => {
     try {
       setSaving(true);
-      const payload: any = {};
+      const payload: { [key: string]: any } = {};
 
       if (isChildProfile) {
         if (formData.firstName) payload.firstName = formData.firstName;
@@ -73,7 +86,12 @@ export default function ProfileDetailsManager({
           payload.profileHeadline = formData.profileHeadline;
         if (formData.about) payload.about = formData.about;
 
-        if (formData.mobileNumber) payload.mobileNumber = formData.mobileNumber;
+        if (formData.mobile?.countryCode || formData.mobile?.phoneNumber) {
+          payload.mobile = {
+            countryCode: formData.mobile.countryCode || "",
+            phoneNumber: formData.mobile.phoneNumber || "",
+          };
+        }
         if (formData.dob) payload.dob = formData.dob;
       }
 
@@ -91,10 +109,7 @@ export default function ProfileDetailsManager({
     }
   };
 
-  const handleMediaUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: "avatar" | "banner"
-  ) => {
+  const handleMediaUpload = async (e, type) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
     const file = e.target.files[0];
@@ -136,7 +151,7 @@ export default function ProfileDetailsManager({
     }
   };
 
-  const handleDeleteMedia = async (type: "avatar" | "banner") => {
+  const handleDeleteMedia = async (type) => {
     const hasPermission =
       type === "avatar"
         ? userCanEditMedia || canDeleteAvatar
@@ -173,6 +188,75 @@ export default function ProfileDetailsManager({
       setUploadingMedia(false);
     }
   };
+
+  const CoreInfoDisplay = ({ profileData, isChildProfile }) => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col pb-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            Full Name
+          </span>
+          <span className="text-base font-semibold text-foreground">
+            {`${profileData?.firstName || ""} ${profileData?.lastName || ""}`}
+          </span>
+        </div>
+
+        {profileData?.dob && (
+          <div className="flex flex-col pb-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              Date of Birth
+            </span>
+            <span className="text-base text-foreground">
+              {new Date(profileData.dob).toLocaleDateString()}
+            </span>
+          </div>
+        )}
+
+        {!isChildProfile && (
+          <div className="flex flex-col pb-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              Mobile
+            </span>
+            {profileData?.mobile?.phoneNumber ? (
+              <span className="text-base text-foreground">
+                {`${profileData.mobile.countryCode || ""} ${
+                  profileData.mobile.phoneNumber
+                }`}
+              </span>
+            ) : (
+              <span className="text-base text-gray-500 italic">
+                Not provided
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Headline */}
+      {profileData?.profileHeadline && (
+        <div className="flex flex-col pb-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            Headline
+          </span>
+          <span className="text-base text-foreground">
+            {profileData.profileHeadline}
+          </span>
+        </div>
+      )}
+
+      {/* About */}
+      {profileData?.about && (
+        <div className="flex flex-col pt-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            About Me
+          </span>
+          <p className="text-base text-foreground whitespace-pre-wrap">
+            {profileData.about}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-8">
@@ -291,7 +375,7 @@ export default function ProfileDetailsManager({
         </CardContent>
       </Card>
 
-      <Card className="rounded-xl border-blue-100 shadow-sm">
+      <Card className="rounded-xllue-100 shadow-sm">
         <CardHeader className="flex flex-row justify-between items-center pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <User className="h-5 w-5 text-secondary" />
@@ -320,100 +404,156 @@ export default function ProfileDetailsManager({
         </CardHeader>
 
         <CardContent className="space-y-4 text-left pt-2">
-          {isChildProfile ? (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  disabled={!editingCore}
-                  value={formData.firstName || ""}
-                  onChange={(e) => handleChange("firstName", e.target.value)}
-                  placeholder="First Name"
-                />
-                <Input
-                  disabled={!editingCore}
-                  value={formData.lastName || ""}
-                  onChange={(e) => handleChange("lastName", e.target.value)}
-                  placeholder="Last Name"
-                />
+          {editingCore ? (
+            isChildProfile ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="core-first-name">First Name</Label>
+                    <Input
+                      id="core-first-name"
+                      value={formData.firstName || ""}
+                      onChange={(e) =>
+                        handleChange("firstName", e.target.value)
+                      }
+                      placeholder="First Name"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="core-last-name">Last Name</Label>
+                    <Input
+                      id="core-last-name"
+                      value={formData.lastName || ""}
+                      onChange={(e) => handleChange("lastName", e.target.value)}
+                      placeholder="Last Name"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="core-dob">Date of Birth</Label>
+                  <Input
+                    id="core-dob"
+                    value={
+                      formData.dob
+                        ? new Date(formData.dob).toISOString().split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) => handleChange("dob", e.target.value)}
+                    placeholder="Date of Birth"
+                    type="date"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="core-headline">Headline</Label>
+                  <Input
+                    id="core-headline"
+                    value={formData.profileHeadline || ""}
+                    onChange={(e) =>
+                      handleChange("profileHeadline", e.target.value)
+                    }
+                    placeholder="Headline"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="core-about">About</Label>
+                  <Textarea
+                    id="core-about"
+                    value={formData.about || ""}
+                    onChange={(e) => handleChange("about", e.target.value)}
+                    placeholder="About"
+                  />
+                </div>
               </div>
-              <Input
-                disabled={!editingCore}
-                value={
-                  formData.dob
-                    ? new Date(formData.dob).toISOString().split("T")[0]
-                    : ""
-                }
-                onChange={(e) => handleChange("dob", e.target.value)}
-                placeholder="Date of Birth"
-                type="date"
-              />
-              <Input
-                disabled={!editingCore}
-                value={formData.profileHeadline || ""}
-                onChange={(e) =>
-                  handleChange("profileHeadline", e.target.value)
-                }
-                placeholder="Headline"
-              />
-              <Textarea
-                disabled={!editingCore}
-                value={formData.about || ""}
-                onChange={(e) => handleChange("about", e.target.value)}
-                placeholder="About"
-              />
-            </>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="core-first-name">First Name</Label>
+                    <Input
+                      id="core-first-name"
+                      value={formData.firstName || ""}
+                      onChange={(e) =>
+                        handleChange("firstName", e.target.value)
+                      }
+                      placeholder="First Name"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="core-last-name">Last Name</Label>
+                    <Input
+                      id="core-last-name"
+                      value={formData.lastName || ""}
+                      onChange={(e) => handleChange("lastName", e.target.value)}
+                      placeholder="Last Name"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="core-mobile">Mobile</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="core-mobile-cc"
+                        value={formData.mobile?.countryCode || "+91"}
+                        onChange={(e) =>
+                          handleChange("mobile.countryCode", e.target.value)
+                        }
+                        placeholder="+CC"
+                        className="w-20 flex-shrink-0 text-center"
+                      />
+                      <Input
+                        id="core-mobile-number"
+                        value={formData.mobile?.phoneNumber || ""}
+                        onChange={(e) =>
+                          handleChange("mobile.phoneNumber", e.target.value)
+                        }
+                        placeholder="Phone Number"
+                        type="tel"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="core-dob">Date of Birth</Label>
+                    <Input
+                      id="core-dob"
+                      value={
+                        formData.dob
+                          ? new Date(formData.dob).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => handleChange("dob", e.target.value)}
+                      placeholder="Date of Birth"
+                      type="date"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="core-headline">Headline</Label>
+                  <Input
+                    id="core-headline"
+                    value={formData.profileHeadline || ""}
+                    onChange={(e) =>
+                      handleChange("profileHeadline", e.target.value)
+                    }
+                    placeholder="Headline"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="core-about">About</Label>
+                  <Textarea
+                    id="core-about"
+                    value={formData.about || ""}
+                    onChange={(e) => handleChange("about", e.target.value)}
+                    placeholder="About"
+                  />
+                </div>
+              </div>
+            )
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  disabled={!editingCore}
-                  value={formData.firstName || ""}
-                  onChange={(e) => handleChange("firstName", e.target.value)}
-                  placeholder="First Name"
-                />
-                <Input
-                  disabled={!editingCore}
-                  value={formData.lastName || ""}
-                  onChange={(e) => handleChange("lastName", e.target.value)}
-                  placeholder="Last Name"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  disabled={!editingCore}
-                  value={formData.mobileNumber || ""}
-                  onChange={(e) => handleChange("mobileNumber", e.target.value)}
-                  placeholder="Mobile Number"
-                  type="tel"
-                />
-                <Input
-                  disabled={!editingCore}
-                  value={
-                    formData.dob
-                      ? new Date(formData.dob).toISOString().split("T")[0]
-                      : ""
-                  }
-                  onChange={(e) => handleChange("dob", e.target.value)}
-                  placeholder="Date of Birth"
-                  type="date"
-                />
-              </div>
-
-              <Input
-                disabled={!editingCore}
-                value={formData.profileHeadline || ""}
-                onChange={(e) =>
-                  handleChange("profileHeadline", e.target.value)
-                }
-                placeholder="Headline"
-              />
-              <Textarea
-                disabled={!editingCore}
-                value={formData.about || ""}
-                onChange={(e) => handleChange("about", e.target.value)}
-                placeholder="About"
-              />
-            </>
+            <CoreInfoDisplay
+              profileData={profileData}
+              isChildProfile={isChildProfile}
+            />
           )}
         </CardContent>
       </Card>
@@ -428,6 +568,17 @@ export default function ProfileDetailsManager({
             { label: "State", key: "state" },
             { label: "Zip Code", key: "zipCode" },
             { label: "Country", key: "country" },
+            {
+              label: "Address Type",
+              key: "type",
+              type: "buttonGroup",
+              options: ["HOME", "WORK", "OTHER"],
+            },
+            {
+              label: "Primary Address",
+              key: "isPrimary",
+              type: "boolean",
+            },
           ]}
           data={profileData.addresses || []}
           childId={childId}
@@ -455,6 +606,8 @@ export default function ProfileDetailsManager({
           { label: "Title", key: "title" },
           { label: "Company", key: "company" },
           { label: "Location", key: "location" },
+          { label: "Start Date", key: "startDate", type: "date" },
+          { label: "End Date", key: "endDate", type: "date" },
           { label: "Description", key: "description", type: "textarea" },
         ]}
         data={profileData.experiences || []}
@@ -471,6 +624,8 @@ export default function ProfileDetailsManager({
           { label: "Institution", key: "institution" },
           { label: "Degree", key: "degree" },
           { label: "Field of Study", key: "fieldOfStudy" },
+          { label: "Start Date", key: "startDate", type: "date" },
+          { label: "End Date", key: "endDate", type: "date" },
         ]}
         data={profileData.educations || []}
         childId={childId}
@@ -485,8 +640,10 @@ export default function ProfileDetailsManager({
         fields={[
           { label: "Name", key: "name" },
           { label: "Role", key: "role" },
-          { label: "Description", key: "description", type: "textarea" },
+          { label: "Start Date", key: "startDate", type: "date" },
+          { label: "End Date", key: "endDate", type: "date" },
           { label: "Project URL", key: "projectUrl" },
+          { label: "Description", key: "description", type: "textarea" },
         ]}
         data={profileData.projects || []}
         childId={childId}
@@ -501,6 +658,9 @@ export default function ProfileDetailsManager({
         fields={[
           { label: "Name", key: "name" },
           { label: "Issuing Organization", key: "issuingOrganization" },
+          { label: "Issue Date", key: "issueDate", type: "date" },
+          { label: "Expiration Date", key: "expirationDate", type: "date" },
+          { label: "Credential URL", key: "credentialUrl" },
         ]}
         data={profileData.certifications || []}
         childId={childId}
@@ -515,6 +675,7 @@ export default function ProfileDetailsManager({
         fields={[
           { label: "Name", key: "name" },
           { label: "Issuer", key: "issuer" },
+          { label: "Issue Date", key: "issueDate", type: "date" },
           { label: "Description", key: "description", type: "textarea" },
         ]}
         data={profileData.achievements || []}
@@ -527,7 +688,11 @@ export default function ProfileDetailsManager({
       <ProfileSection
         title="Interests"
         icon={Heart}
-        fields={[{ label: "Interest Name", key: "name" }]}
+        fields={[
+          { label: "Interest Name", key: "name" },
+          { label: "Category", key: "category" },
+          { label: "Followed Since", key: "followedSince", type: "date" },
+        ]}
         data={profileData.interests || []}
         childId={childId}
         userToken={user.token}

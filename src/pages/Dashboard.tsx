@@ -22,67 +22,41 @@ import {
   Award,
   Heart,
   Activity,
-  Trophy,
-  Target,
   Loader2,
 } from "lucide-react";
-import { childApi, reportsApi, userApi } from "@/lib/api";
+import { userApi } from "@/lib/api";
 
-interface RecentPost {
-  _id: string;
+interface DashboardChild {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dob?: string;
+  avatar?: { url?: string; public_id?: string } | null;
+  headline?: string | null;
+}
+
+interface DashboardPost {
+  _id?: string;
   title?: string;
   content?: string;
   channelName?: string;
 }
 
-interface UserChannel {
+interface DashboardChannel {
   _id?: string;
-  name: string;
+  name?: string;
   postsCount?: number;
 }
 
-interface CuratedContent {}
-
-interface SocialActivity {
-  recentPosts: RecentPost[];
-  userChannel: UserChannel | null;
-  curatedContent: CuratedContent | null;
-}
-
-interface ChildProfileCounts {
-  interestsCount: number;
-  skillsCount: number;
-  certificationsCount: number;
-  achievementsCount: number;
-  projectsCount: number;
-  educationsCount: number;
-  activitiesCount: number;
-  insightsCount: number;
-}
-
-interface ChildProfileSummary {
-  _id: string;
-  firstName?: string;
-  lastName?: string;
-  gender?: "Male" | "Female" | "Other" | "Prefer not to say";
-  dob?: string;
-  about?: string;
-  avatar?: { url?: string; public_id?: string };
-
-  profileCounts: ChildProfileCounts;
-  permissions: Record<string, boolean>;
-}
-
 export interface UserDashboardData {
-  _id: string;
-  role: "PARENT" | "NORMAL_USER" | "CHILD";
-  email: string;
+  id: string;
   firstName?: string;
   lastName?: string;
+  email: string;
   dob?: string;
-  about?: string;
+  avatar?: { url?: string; public_id?: string };
   profileHeadline?: string;
-
+  role: "PARENT" | "NORMAL_USER" | "CHILD";
   skillsCount: number;
   certificationsCount: number;
   experiencesCount: number;
@@ -90,24 +64,20 @@ export interface UserDashboardData {
   interestsCount: number;
   achievementsCount: number;
   projectsCount: number;
-
-  socialActivity: SocialActivity;
-
-  children?: ChildProfileSummary[];
+  recentPosts: DashboardPost[];
+  channels: DashboardChannel[];
+  children?: DashboardChild[];
 }
 
-interface SuggestedContent {
-  _id: string;
-  title: string;
-  icon?: string;
-}
-
-interface LeaderboardItem {
-  id: string;
-  name: string;
-  score: number;
-  rank: number;
-}
+const AddChildButton = () => {
+  const navigate = useNavigate();
+  return (
+    <Button onClick={() => navigate("/add-child")}>
+      <Plus className="h-4 w-4 mr-2" />
+      Add Child
+    </Button>
+  );
+};
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<UserDashboardData | null>(
@@ -116,7 +86,6 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const user = getAuth();
-
   const hasLoadedRef = useRef(false);
 
   const fetchDashboard = useCallback(async () => {
@@ -124,20 +93,9 @@ export default function Dashboard() {
     hasLoadedRef.current = true;
     setIsLoading(true);
     try {
-      let data: UserDashboardData;
-      if (
-        user.role === "PARENT" ||
-        user.role === "NORMAL_USER" ||
-        user.role === "CHILD"
-      ) {
-        data = await userApi.getDashboard(user.token);
-      } else {
-        throw new Error("Role not supported by dashboard fetch.");
-      }
-
+      const data = await userApi.getDashboard(user.token);
       setDashboardData(data);
-    } catch (error) {
-      console.error(error);
+    } catch {
       toast.error("Failed to load dashboard data.");
     } finally {
       setIsLoading(false);
@@ -155,11 +113,9 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="container max-w-4xl mx-auto py-8">
-          <p className="text-center flex items-center justify-center">
-            <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Loading
-            dashboard...
-          </p>
+        <div className="container max-w-4xl mx-auto py-8 flex justify-center items-center">
+          <Loader2 className="h-6 w-6 mr-2 animate-spin text-primary" />
+          <p>Loading dashboard...</p>
         </div>
       </Layout>
     );
@@ -179,27 +135,12 @@ export default function Dashboard() {
 
   const isChild = user.role === "CHILD";
   const isParent = user.role === "PARENT";
-  const isNormalUser = user.role === "NORMAL_USER";
-
-  const profileId = dashboardData._id || user.userId;
+  const profileId = dashboardData.id || user.userId;
 
   const renderProfileSection = (data: UserDashboardData) => {
     const hasProfileDetails =
-      data.firstName || data.lastName || data.about || data?.profileHeadline;
-
+      data.firstName || data.lastName || data.profileHeadline;
     const profilePath = isChild ? `/profile/${profileId}` : `/profile`;
-
-    const hasPortfolioData =
-      data?.about ||
-      data?.interestsCount ||
-      data?.certificationsCount ||
-      data?.profileHeadline ||
-      data?.achievementsCount ||
-      data?.certificationsCount ||
-      data?.educationsCount ||
-      data?.experiencesCount ||
-      data?.projectsCount;
-
     const displayName = `${data.firstName || ""} ${data.lastName || ""}`.trim();
 
     return (
@@ -217,318 +158,258 @@ export default function Dashboard() {
             {hasProfileDetails ? "Edit Profile" : "Add Details"}
           </Button>
         </CardHeader>
-
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 text-center">
+          {data.avatar?.url && (
+            <div className="flex justify-center">
+              <img
+                src={data.avatar.url}
+                alt="Profile Avatar"
+                className="w-20 h-20 rounded-full object-cover mb-3"
+              />
+            </div>
+          )}
           <p className="text-lg font-semibold">{displayName}</p>
-          <p className="text-sm">
-            {data.about || "Describe yourself by clicking 'Edit Profile'."}
+          <p className="text-sm text-muted-foreground">
+            {data.profileHeadline ||
+              "Describe yourself by clicking 'Edit Profile'."}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 justify-center">
               <Zap className="h-4 w-4 text-yellow-500" />
               <span className="text-sm">{data.skillsCount} Skills</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 justify-center">
               <Heart className="h-4 w-4 text-red-500" />
               <span className="text-sm">{data.interestsCount} Interests</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 justify-center">
               <BookOpen className="h-4 w-4 text-blue-500" />
               <span className="text-sm">{data.certificationsCount} Certs</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 justify-center">
               <Award className="h-4 w-4 text-green-500" />
               <span className="text-sm">{data.achievementsCount} Achievs</span>
             </div>
           </div>
-
-          {!hasPortfolioData && (
-            <p className="text-center text-sm text-muted-foreground pt-4">
-              Complete your profile by adding Skills and Achievements.
-            </p>
-          )}
         </CardContent>
       </Card>
     );
   };
 
-  const renderChannelOverview = (socialActivity: SocialActivity) => {
-    const channels: UserChannel[] = socialActivity.userChannel
-      ? [socialActivity.userChannel]
-      : [];
-
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center">
-            <Link className="h-5 w-5 mr-3 text-indigo-500" />
-            My Channels
-          </CardTitle>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate("/channels/create")}
+  const renderChildProfiles = (children: DashboardChild[]) => (
+    <Card className="shadow-md">
+      <CardHeader>
+        <CardTitle className="flex items-center text-xl">
+          <Activity className="h-5 w-5 mr-3 text-purple-600" />
+          Children
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {children.map((child) => (
+          <div
+            key={child.id}
+            className="border rounded-lg p-3 flex flex-col items-center text-center hover:shadow-md transition"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            New Channel
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {channels.length > 0 ? (
-            <div className="space-y-3">
-              {channels.map((channel, index) => (
-                <div
-                  key={channel._id || index}
-                  className="flex justify-between items-center border-b pb-2 last:border-b-0 cursor-pointer hover:bg-gray-50 p-1 rounded-md"
-                  onClick={() => navigate(`/channels/${channel._id || "main"}`)}
-                >
-                  <span className="font-medium truncate">{channel.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {channel.postsCount || 0} Posts
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground">
-              You haven't created any channels yet.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderPostsFeed = (socialActivity: SocialActivity) => {
-    const posts = socialActivity.recentPosts;
-
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center">
-            <Star className="h-5 w-5 mr-3 text-amber-500" />
-            Recent Posts
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/feed")}>
-            View Feed
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {posts.length > 0 ? (
-            <div className="space-y-3">
-              {posts.slice(0, 3).map((post, index) => (
-                <div
-                  key={post._id || index}
-                  className="border-l-4 border-amber-500 pl-3 py-1 cursor-pointer hover:bg-gray-50 p-1 rounded-md"
-                  onClick={() => navigate(`/post/${post._id || "draft"}`)}
-                >
-                  <p className="font-medium truncate">
-                    {post.title ||
-                      post.content?.substring(0, 30) ||
-                      "Untitled Post"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Channel: {post.channelName || "General"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground">
-              Time to make your first post!
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderChildGamification = (childId: string, token: string) => {
-    const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-      const fetchGamificationData = async () => {
-        setLoading(true);
-        try {
-          const leaderboardData = await reportsApi.getLeaderboard(token);
-
-          setLeaderboard(leaderboardData.leaderboard || []);
-        } catch (error) {
-          console.error(error);
-          toast.error("Failed to load gamification data.");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchGamificationData();
-    }, [childId, token]);
-
-    if (loading) {
-      return (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-          </CardContent>
-        </Card>
-      );
-    }
-
-    const content: SuggestedContent[] = [
-      { _id: "1", title: "Start Python Basics Quiz" },
-      { _id: "2", title: "Complete HTML Fundamentals Module" },
-    ];
-
-    return (
-      <div className="space-y-6">
-        {/* Leaderboard */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl">
-              <Trophy className="h-5 w-5 mr-3 text-yellow-600" />
-              Global Leaderboard
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {leaderboard.length > 0 ? (
-              <div className="space-y-2">
-                {leaderboard.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`flex justify-between items-center p-2 rounded-lg ${"text-muted-foreground"}`}
-                  >
-                    <span>
-                      {item.rank}. {item.name}
-                    </span>
-                    <span className="text-lg">{item.score} pts</span>
-                  </div>
-                ))}
-              </div>
+            {child.avatar?.url ? (
+              <img
+                src={child.avatar.url}
+                alt={child.firstName}
+                className="w-16 h-16 rounded-full object-cover mb-2"
+              />
             ) : (
-              <p className="text-muted-foreground text-center">
-                No current rankings available.
-              </p>
-            )}
-            <Button variant="link" size="sm" className="mt-2 p-0">
-              View Full Rankings
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl">
-              <Target className="h-5 w-5 mr-3 text-green-600" />
-              AI Suggested Content
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {content.length > 0 ? (
-              content.map((item) => (
-                <Button
-                  key={item._id}
-                  variant="outline"
-                  className="w-full justify-start border-l-4 border-green-500"
-                  onClick={() => navigate(`/content/${item._id}`)}
-                >
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  {item.title}
-                </Button>
-              ))
-            ) : (
-              <p className="text-muted-foreground text-center">
-                No new content suggestions right now.
-              </p>
-            )}
-            <Button variant="link" size="sm" className="mt-2 p-0">
-              Explore Learning Paths
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-
-  const renderChildInsights = (children: ChildProfileSummary[]) => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold flex items-center">
-        <Activity className="h-5 w-5 mr-3 text-purple-600" />
-        Child Activity & Insights
-      </h2>
-
-      {children.map((child) => (
-        <Card key={child._id} className="border-l-4 border-purple-500">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-xl">
-              {`${child.firstName || ""} ${child.lastName || ""}`.trim() ||
-                "Unnamed Child"}
-            </CardTitle>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => navigate(`/users/child/${child._id}`)}
-            >
-              View Full Report
-            </Button>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-purple-600">
-                  Total Skills
-                </p>
-                {/* Fix 5: Use existing profileCounts from the interface */}
-                <p className="text-2xl font-bold">
-                  {child.profileCounts.skillsCount}
-                </p>
+              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-purple-100 mb-2">
+                <User className="h-6 w-6 text-purple-600" />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-purple-600">
-                  Total Projects
-                </p>
-                {/* Fix 6: Use existing profileCounts from the interface */}
-                <p className="text-2xl font-bold">
-                  {child.profileCounts.projectsCount}
-                </p>
-              </div>
-            </div>
-
-            <CardDescription className="pt-4 border-t mt-4">
-              **Profile Summary:**{" "}
-              {child.about ||
-                "No profile description available. Encourage them to complete their details."}
-            </CardDescription>
-
+            )}
+            <p className="font-semibold">{`${child.firstName} ${child.lastName}`}</p>
+            <p className="text-sm text-muted-foreground">
+              {child.headline || "No headline yet"}
+            </p>
+            <p className="text-xs text-gray-500">
+              {child.dob ? new Date(child.dob).toLocaleDateString() : "N/A"}
+            </p>
             <Button
               variant="link"
-              className="p-0 mt-3"
-              onClick={() => navigate(`/users/child/${child._id}`)}
+              size="sm"
+              className="mt-2 p-0"
+              onClick={() => navigate(`/users/child/${child.id}`)}
             >
-              See Recent Activity Log
+              View Profile
             </Button>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 
-  const socialActivity = dashboardData.socialActivity;
+  const renderPostsFeed = (posts: DashboardPost[]) => (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center">
+          <Star className="h-5 w-5 mr-3 text-amber-500" />
+          Recent Posts
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {posts?.length > 0 ? (
+          <div className="space-y-3">
+            {posts.slice(0, 3).map((post, index) => (
+              <div
+                key={post._id || index}
+                className="border-l-4 border-amber-500 pl-3 py-1 cursor-pointer hover:bg-gray-50 p-1 rounded-md"
+                onClick={() => navigate(`/post/${post._id || "draft"}`)}
+              >
+                <p className="font-medium truncate">
+                  {post.title ||
+                    post.content?.substring(0, 30) ||
+                    "Untitled Post"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Channel: {post.channelName || "General"}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground">
+            Time to make your first post!
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const renderChannelOverview = (channels: DashboardChannel[]) => (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center">
+          <Link className="h-5 w-5 mr-3 text-indigo-500" />
+          My Channels
+        </CardTitle>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => navigate("/channels/create")}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New Channel
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {channels?.length > 0 ? (
+          <div className="space-y-3">
+            {channels.map((channel, index) => (
+              <div
+                key={channel._id || index}
+                className="flex justify-between items-center border-b pb-2 last:border-b-0 cursor-pointer hover:bg-gray-50 p-1 rounded-md"
+                onClick={() => navigate(`/channels/${channel._id || "main"}`)}
+              >
+                <span className="font-medium truncate">{channel.name}</span>
+                <span className="text-sm text-muted-foreground">
+                  {channel.postsCount || 0} Posts
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground">
+            You haven’t created any channels yet.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  console.log("isParent", isParent);
+
+  if (isParent) {
+    const childrenData = dashboardData.children || [];
+
+    return (
+      <Layout>
+        <div className="container max-w-6xl mx-auto py-8 space-y-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Parent Management Dashboard</h1>
+            <AddChildButton />
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+              {renderProfileSection(dashboardData)}
+              {renderPostsFeed(dashboardData.recentPosts)}
+              {renderChannelOverview(dashboardData.channels)}
+            </div>
+
+            <div className="lg:col-span-1 space-y-6">
+              {childrenData.length > 0 ? (
+                childrenData.map((child) => (
+                  <Card
+                    key={child.id}
+                    className="border-l-4 border-purple-500 shadow-sm"
+                  >
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <CardTitle className="flex items-center space-x-3">
+                        {child.avatar?.url ? (
+                          <img
+                            src={child.avatar.url}
+                            alt={child.firstName}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <User className="h-5 w-5 text-purple-600" />
+                          </div>
+                        )}
+                        <span className="font-semibold text-base">{`${child.firstName} ${child.lastName}`}</span>
+                      </CardTitle>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/users/child/${child.id}`)}
+                      >
+                        View Profile
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        {child.headline || "No headline yet"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        DOB:{" "}
+                        {child.dob
+                          ? new Date(child.dob).toLocaleDateString()
+                          : "N/A"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    No children profiles linked yet. Click "Add Child" to begin
+                    monitoring activity.
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (isChild) {
     return (
       <Layout>
         <div className="container max-w-6xl mx-auto py-8 space-y-8">
           <h1 className="text-3xl font-bold text-primary">My Creative Space</h1>
-
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
               {renderProfileSection(dashboardData)}
-              {renderPostsFeed(socialActivity)}
-              {renderChannelOverview(socialActivity)}
+              {renderPostsFeed(dashboardData.recentPosts)}
+              {renderChannelOverview(dashboardData.channels)}
             </div>
-
             <div className="lg:col-span-1 space-y-6">
-              {renderChildGamification(profileId, user.token)}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -553,82 +434,18 @@ export default function Dashboard() {
     );
   }
 
-  if (isParent) {
-    const childrenData = dashboardData.children || [];
-
-    return (
-      <Layout>
-        <div className="container max-w-6xl mx-auto py-8 space-y-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Parent Management Dashboard</h1>
-            <div className="space-x-4">
-              <Button onClick={() => navigate("/add-child")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Child
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
-              {childrenData.length > 0 ? (
-                renderChildInsights(childrenData)
-              ) : (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    No children profiles are linked yet. Click **"Add Child"**
-                    to begin monitoring activity.
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            <div className="lg:col-span-1 space-y-6">
-              {renderProfileSection(dashboardData)}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Settings className="h-5 w-5 mr-3 text-gray-500" />
-                    Management & Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/settings")}
-                  >
-                    Manage Account
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/controls")}
-                  >
-                    Manage Permissions
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto py-8 space-y-8">
-        <h1 className="text-3xl font-bold">User Dashboard</h1>
-
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">User Dashboard</h1>
+          <AddChildButton />
+        </div>
         <div className="grid gap-8 lg:grid-cols-3">
-          {" "}
           <div className="lg:col-span-2 space-y-6">
             {renderProfileSection(dashboardData)}
-
-            {renderPostsFeed(socialActivity)}
-
-            {renderChannelOverview(socialActivity)}
+            {renderPostsFeed(dashboardData.recentPosts)}
+            {renderChannelOverview(dashboardData.channels)}
           </div>
           <div className="lg:col-span-1 space-y-6">
             <Card>
@@ -645,13 +462,6 @@ export default function Dashboard() {
                   onClick={() => navigate("/settings")}
                 >
                   Manage Settings
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={() => toast.info("Logout function not implemented.")}
-                >
-                  Logout
                 </Button>
               </CardContent>
             </Card>

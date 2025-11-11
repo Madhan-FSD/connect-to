@@ -21,6 +21,7 @@ import "./App.css";
 import AIHub from "./pages/AiHub";
 import AIGames from "./pages/AiGames";
 import FeedPage from "./pages/FeedPage";
+import ChildControlPage from "./pages/ChildControlPage";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return isAuthenticated() ? <>{children}</> : <Navigate to="/auth/login" />;
@@ -94,6 +95,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="users/child/:childId" element={<ChildControlPage />} />
         <Route
           path="/child/profile/:childId"
           element={

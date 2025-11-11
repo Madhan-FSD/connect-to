@@ -18,7 +18,7 @@ export interface User {
   parentId?: string;
 }
 
-export const AUTH_STORAGE_KEY = "familysocial_user";
+export const AUTH_STORAGE_KEY = "user";
 
 export const saveAuth = (user: User) => {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
