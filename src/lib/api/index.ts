@@ -8,3 +8,4 @@ export * from "./connection.api";
 export * from "./ai.api";
 export * from "./feed.api";
 export * from "./child.api";
+export * from "./reaction.api";

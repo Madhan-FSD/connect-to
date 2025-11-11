@@ -4,13 +4,23 @@ import { feedApi } from "@/lib/api";
 import { PostCard } from "@/components/PostCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getAuth } from "@/lib/auth";
+import { Layout } from "@/components/Layout";
 
+interface Owner {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  avatar?: {
+    url?: string;
+    public_id?: string;
+  };
+}
 interface Post {
   _id: string;
-  ownerId: { _id: string; username?: string; email?: string };
+  ownerId: Owner;
   title?: string;
   content: string;
   mediaUrl?: string;
@@ -39,31 +49,31 @@ const useFeed = (feedType: "personalized" | "explore", userToken: string) => {
 
   const fetchPosts = useCallback(
     async (pageToFetch: number, isInitialLoad: boolean = false) => {
-      if (!feed.hasMore && !isInitialLoad) return;
-      if (feed.isLoading) return;
-
-      setFeed((prev) => ({ ...prev, isLoading: true, error: null }));
+      setFeed((prev) => {
+        if (
+          (prev.isLoading && !isInitialLoad) ||
+          (!prev.hasMore && !isInitialLoad)
+        )
+          return prev;
+        return { ...prev, isLoading: true, error: null };
+      });
 
       try {
-        let data: any;
+        let data;
         if (feedType === "personalized") {
           data = await feedApi.getPersonalizedFeed(userToken, pageToFetch);
         } else {
           data = await feedApi.getExploreFeed(userToken, pageToFetch);
         }
 
-        const newPosts = data.posts || [];
-        const receivedPosts = Array.isArray(newPosts) ? newPosts : [];
+        const newPosts = Array.isArray(data.posts) ? data.posts : [];
         const limit = data.limit || 10;
 
         setFeed((prev) => ({
           ...prev,
-          posts:
-            pageToFetch === 1
-              ? receivedPosts
-              : [...prev.posts, ...receivedPosts],
+          posts: pageToFetch === 1 ? newPosts : [...prev.posts, ...newPosts],
           page: pageToFetch + 1,
-          hasMore: receivedPosts.length > 0 && receivedPosts.length === limit,
+          hasMore: newPosts.length === limit,
           isLoading: false,
         }));
       } catch (e: any) {
@@ -75,7 +85,7 @@ const useFeed = (feedType: "personalized" | "explore", userToken: string) => {
         }));
       }
     },
-    [feed.hasMore, feed.isLoading, feedType, userToken]
+    [feedType, userToken]
   );
 
   const removePost = (postId: string) => {
@@ -85,7 +95,7 @@ const useFeed = (feedType: "personalized" | "explore", userToken: string) => {
     }));
   };
 
-  const refreshFeed = () => {
+  const refreshFeed = useCallback(() => {
     setFeed({
       posts: [],
       page: 1,
@@ -94,7 +104,7 @@ const useFeed = (feedType: "personalized" | "explore", userToken: string) => {
       error: null,
     });
     fetchPosts(1, true);
-  };
+  }, [fetchPosts]);
 
   useEffect(() => {
     fetchPosts(1, true);
@@ -123,7 +133,6 @@ const useTrending = (userToken: string) => {
     }
   }, [userToken]);
 
-  /** Removes a post from the trending list state */
   const removePost = (postId: string) => {
     setTrending((prev) => prev.filter((post) => post._id !== postId));
   };
@@ -137,7 +146,9 @@ const useTrending = (userToken: string) => {
 
 export default function FeedPage() {
   const auth = getAuth();
-  const [activeTab, setActiveTab] = useState("personalized");
+  const [activeTab, setActiveTab] = useState<"personalized" | "explore">(
+    "personalized"
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -171,9 +182,7 @@ export default function FeedPage() {
 
   const handlePostDeleted = (postId: string) => {
     removePersonalizedPost(postId);
-
     removeExplorePost(postId);
-
     removeTrendingPost(postId);
   };
 
@@ -181,20 +190,40 @@ export default function FeedPage() {
     const scrollElement = scrollContainerRef.current;
     if (!scrollElement) return;
 
+    let ticking = false;
+
     const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollElement;
-      if (
-        scrollHeight - scrollTop < clientHeight + 300 &&
-        !currentFeed.isLoading &&
-        currentFeed.hasMore
-      ) {
-        currentFetcher(currentFeed.page);
-      }
+      if (ticking) return;
+      ticking = true;
+
+      requestAnimationFrame(() => {
+        const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+        if (
+          scrollHeight - scrollTop < clientHeight + 300 &&
+          !currentFeed.isLoading &&
+          currentFeed.hasMore
+        ) {
+          currentFetcher(currentFeed.page);
+        }
+        ticking = false;
+      });
     };
 
     scrollElement.addEventListener("scroll", handleScroll);
     return () => scrollElement.removeEventListener("scroll", handleScroll);
-  }, [currentFeed, currentFetcher]);
+  }, [
+    activeTab,
+    currentFetcher,
+    currentFeed.hasMore,
+    currentFeed.isLoading,
+    currentFeed.page,
+  ]);
+
+  const LoadingSpinner = () => (
+    <div className="flex justify-center py-8">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
 
   const renderFeedContent = (feed: FeedState) => {
     if (feed.error && feed.posts.length === 0) {
@@ -233,92 +262,93 @@ export default function FeedPage() {
     );
   };
 
-  const LoadingSpinner = () => (
-    <div className="flex justify-center py-8">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-  );
-
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8 h-screen">
-      <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
-        <Compass className="h-8 w-8 text-primary" /> Global Feed
-      </h1>
+    <Layout>
+      <div className="container mx-auto max-w-7xl px-4 py-8 h-screen">
+        <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
+          <Compass className="h-8 w-8 text-primary" /> Global Feed
+        </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-140px)]">
-        <div
-          className="lg:col-span-2 overflow-y-scroll"
-          ref={scrollContainerRef}
-        >
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-4 sticky top-0 bg-white z-10 shadow-sm">
-              <TabsTrigger
-                value="personalized"
-                className="flex items-center gap-2"
-              >
-                <User className="h-4 w-4" /> Personalized
-              </TabsTrigger>
-              <TabsTrigger value="explore" className="flex items-center gap-2">
-                <Compass className="h-4 w-4" /> Explore
-              </TabsTrigger>
-            </TabsList>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-140px)]">
+          <div
+            className="lg:col-span-2 overflow-y-scroll"
+            ref={scrollContainerRef}
+          >
+            <Tabs
+              value={activeTab}
+              onValueChange={(val) => setActiveTab(val as any)}
+            >
+              <TabsList className="grid w-full grid-cols-2 mb-4 sticky top-0 bg-white z-10 shadow-sm">
+                <TabsTrigger
+                  value="personalized"
+                  className="flex items-center gap-2"
+                >
+                  <User className="h-4 w-4" /> Personalized
+                </TabsTrigger>
+                <TabsTrigger
+                  value="explore"
+                  className="flex items-center gap-2"
+                >
+                  <Compass className="h-4 w-4" /> Explore
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="personalized" className="mt-0">
-              {renderFeedContent(personalizedFeed)}
-            </TabsContent>
+              <TabsContent value="personalized" className="mt-0">
+                {renderFeedContent(personalizedFeed)}
+              </TabsContent>
 
-            <TabsContent value="explore" className="mt-0">
-              {renderFeedContent(exploreFeed)}
-            </TabsContent>
-          </Tabs>
-        </div>
+              <TabsContent value="explore" className="mt-0">
+                {renderFeedContent(exploreFeed)}
+              </TabsContent>
+            </Tabs>
+          </div>
 
-        <div className="hidden lg:block lg:col-span-1">
-          <Card className="sticky top-4">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Zap className="h-5 w-5 text-yellow-500" /> Trending Posts
-              </CardTitle>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={fetchTrending}
-                disabled={isTrendingLoading}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${
-                    isTrendingLoading ? "animate-spin" : ""
-                  }`}
-                />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {isTrendingLoading && trending.length === 0 ? (
-                <p className="text-center py-4 text-sm text-muted-foreground">
-                  Loading trending...
-                </p>
-              ) : trendingError ? (
-                <p className="text-sm text-red-500">{trendingError}</p>
-              ) : trending.length > 0 ? (
-                <div className="space-y-3">
-                  {/* Reuse PostCard or use a simplified list view for sidebar */}
-                  {trending.map((post) => (
-                    <PostCard
-                      key={post._id}
-                      post={post}
-                      onDelete={() => handlePostDeleted(post._id)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No trending posts right now.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <div className="hidden lg:block lg:col-span-1">
+            <Card className="sticky top-4">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Zap className="h-5 w-5 text-yellow-500" /> Trending Posts
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={fetchTrending}
+                  disabled={isTrendingLoading}
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${
+                      isTrendingLoading ? "animate-spin" : ""
+                    }`}
+                  />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {isTrendingLoading && trending.length === 0 ? (
+                  <p className="text-center py-4 text-sm text-muted-foreground">
+                    Loading trending...
+                  </p>
+                ) : trendingError ? (
+                  <p className="text-sm text-red-500">{trendingError}</p>
+                ) : trending.length > 0 ? (
+                  <div className="space-y-3">
+                    {trending.map((post) => (
+                      <PostCard
+                        key={post._id}
+                        post={post}
+                        onDelete={() => handlePostDeleted(post._id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No trending posts right now.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }

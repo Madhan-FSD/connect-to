@@ -74,6 +74,8 @@ export default function ChildControlPage() {
     }
   }, [childId, user?.token]);
 
+  console.log("chlid id", childId);
+
   useEffect(() => {
     fetchChildDetails();
     handleRefreshInsights();

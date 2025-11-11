@@ -23,8 +23,10 @@ import {
   Heart,
   Activity,
   Loader2,
+  PlusCircle,
 } from "lucide-react";
 import { userApi } from "@/lib/api";
+import { CreatePostModal } from "@/components/CreatePostModal";
 
 interface DashboardChild {
   id: string;
@@ -87,6 +89,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const user = getAuth();
   const hasLoadedRef = useRef(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     if (!user?.token || hasLoadedRef.current) return;
@@ -242,42 +245,64 @@ export default function Dashboard() {
     </Card>
   );
 
-  const renderPostsFeed = (posts: DashboardPost[]) => (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center">
-          <Star className="h-5 w-5 mr-3 text-amber-500" />
-          Recent Posts
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {posts?.length > 0 ? (
-          <div className="space-y-3">
-            {posts.slice(0, 3).map((post, index) => (
-              <div
-                key={post._id || index}
-                className="border-l-4 border-amber-500 pl-3 py-1 cursor-pointer hover:bg-gray-50 p-1 rounded-md"
-                onClick={() => navigate(`/post/${post._id || "draft"}`)}
-              >
-                <p className="font-medium truncate">
-                  {post.title ||
-                    post.content?.substring(0, 30) ||
-                    "Untitled Post"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Channel: {post.channelName || "General"}
-                </p>
+  const renderPostsFeed = (posts: DashboardPost[]) => {
+    return (
+      <>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center">
+              <Star className="h-5 w-5 mr-3 text-amber-500" />
+              Recent Posts
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            {posts && posts.length > 0 ? (
+              <div className="space-y-3">
+                {posts.slice(0, 3).map((post, index) => (
+                  <div
+                    key={post._id || index}
+                    className="border-l-4 border-amber-500 pl-3 py-1 cursor-pointer hover:bg-gray-50 p-1 rounded-md"
+                    onClick={() => navigate(`/post/${post._id || "draft"}`)}
+                  >
+                    <p className="font-medium truncate">
+                      {post.title ||
+                        post.content?.substring(0, 30) ||
+                        "Untitled Post"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Channel: {post.channelName || "General"}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-muted-foreground">
-            Time to make your first post!
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-3 py-6 text-center text-muted-foreground">
+                <p>No posts yet. Start by creating your first one!</p>
+                <Button
+                  onClick={() => setShowCreatePost(true)}
+                  className="flex items-center gap-2"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  Create Post
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <CreatePostModal
+          open={showCreatePost}
+          onOpenChange={setShowCreatePost}
+          postTarget="profile"
+          onPostCreated={() => {
+            setShowCreatePost(false);
+            toast.success("Your post has been created!");
+          }}
+        />
+      </>
+    );
+  };
 
   const renderChannelOverview = (channels: DashboardChannel[]) => (
     <Card>
@@ -319,8 +344,6 @@ export default function Dashboard() {
       </CardContent>
     </Card>
   );
-
-  console.log("isParent", isParent);
 
   if (isParent) {
     const childrenData = dashboardData.children || [];
@@ -406,7 +429,7 @@ export default function Dashboard() {
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
               {renderProfileSection(dashboardData)}
-              {renderPostsFeed(dashboardData.recentPosts)}
+              {/* {renderPostsFeed(dashboardData.recentPosts)} */}
               {renderChannelOverview(dashboardData.channels)}
             </div>
             <div className="lg:col-span-1 space-y-6">

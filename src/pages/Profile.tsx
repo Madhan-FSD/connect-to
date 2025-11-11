@@ -42,6 +42,7 @@ export default function ProfilePage() {
         "PROFILE",
         auth.token
       );
+      console.log("res", res);
       setPosts(res.posts || []);
     } catch {
       toast.error("Failed to load posts");
@@ -61,8 +62,12 @@ export default function ProfilePage() {
   }, [viewedChildId, auth]);
 
   useEffect(() => {
-    fetchProfileData();
-  }, [fetchProfileData, fetchPosts]);
+    if (activeTab === "details") {
+      fetchProfileData();
+    } else if (activeTab === "posts") {
+      fetchPosts();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === "recommendations") fetchRecommendations();
