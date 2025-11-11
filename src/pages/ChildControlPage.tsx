@@ -20,6 +20,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { permissionLabels } from "@/utils/permissions";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 interface PermissionSet {
   [key: string]: boolean;
@@ -47,6 +53,7 @@ export default function ChildControlPage() {
   const [activity, setActivity] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [permissions, setPermissions] = useState<PermissionSet>({});
+  const [insights, setInsights] = useState<any>(null);
 
   const handlePermissionToggle = (key: string, value: boolean) => {
     setPermissions((prev) => ({ ...prev, [key]: value }));
@@ -69,6 +76,7 @@ export default function ChildControlPage() {
 
   useEffect(() => {
     fetchChildDetails();
+    handleRefreshInsights();
   }, [childId, user?.token]);
 
   const handleSavePermissions = async () => {
@@ -87,11 +95,19 @@ export default function ChildControlPage() {
   const handleRefreshInsights = async () => {
     if (!childId || !user?.token) return;
     try {
-      const insights = await aiApi.getActivityInsights(childId, user.token);
-      toast.success("Fetched latest AI insights.");
-      console.log(insights);
-    } catch {
+      setIsLoading(true);
+      const data = await aiApi.getActivityInsights(childId, user.token);
+      if (data) {
+        setInsights(data);
+        toast.success("Fetched latest AI insights.");
+      } else {
+        toast.info("No new insights available.");
+      }
+    } catch (error) {
+      console.error("Failed to fetch AI insights:", error);
       toast.error("Failed to fetch insights.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -126,11 +142,7 @@ export default function ChildControlPage() {
             <User className="h-6 w-6 mr-2 text-primary" />
             Manage {firstName} {lastName}
           </h1>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/dashboard")}
-            size="sm"
-          >
+          <Button variant="outline" onClick={() => navigate("/")} size="sm">
             Back to Dashboard
           </Button>
         </div>
@@ -206,16 +218,87 @@ export default function ChildControlPage() {
                     No recent activity found.
                   </p>
                 )}
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={handleRefreshInsights}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh AI Insights
-                </Button>
               </CardContent>
             </Card>
+
+            {insights && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-lg font-semibold">
+                    <Shield className="h-5 w-5 mr-2 text-indigo-600" />
+                    AI Insights
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {insights.summary && (
+                    <div className="bg-indigo-50/70 border-l-4 border-indigo-500 rounded-md p-4">
+                      <p className="text-sm text-gray-700 leading-relaxed text-left">
+                        {insights.summary}
+                      </p>
+                    </div>
+                  )}
+
+                  <Accordion type="single" collapsible className="space-y-2">
+                    {Array.isArray(insights.patterns) &&
+                      insights.patterns.length > 0 && (
+                        <AccordionItem value="patterns">
+                          <AccordionTrigger className="text-sm font-semibold text-gray-800">
+                            Observed Patterns
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              {insights.patterns.map(
+                                (pattern: any, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-all"
+                                  >
+                                    <p className="font-medium text-gray-900 text-sm mb-1">
+                                      {pattern.name}
+                                    </p>
+                                    <p className="text-xs text-gray-600 leading-snug">
+                                      {pattern.description}
+                                    </p>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+
+                    {Array.isArray(insights.recommendations) &&
+                      insights.recommendations.length > 0 && (
+                        <AccordionItem value="recommendations">
+                          <AccordionTrigger className="text-sm font-semibold text-gray-800">
+                            Recommendations
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              {insights.recommendations.map(
+                                (rec: any, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-3 bg-green-50 shadow-sm hover:shadow-md transition-all"
+                                  >
+                                    <p className="font-medium text-green-800 text-sm mb-1">
+                                      {rec.title}
+                                    </p>
+                                    <p className="text-xs text-gray-600 leading-snug">
+                                      {rec.reason}
+                                    </p>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                  </Accordion>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="lg:col-span-2 space-y-6">

@@ -27,26 +27,39 @@ import { userApi, childApi } from "@/lib/api";
 
 const useAvatarUrl = (user: ReturnType<typeof getAuth>) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  const { userId, token, role } = user || {};
+  const hasFetched = useRef(false);
 
   useEffect(() => {
-    if (!token || !userId) {
+    if (!user?.userId || !user?.token) {
       setAvatarUrl(null);
       return;
     }
 
-    const fetchUrl = async () => {
+    const cacheKey = `avatar_${user.userId}`;
+    const cachedUrl = sessionStorage.getItem(cacheKey);
+
+    if (cachedUrl) {
+      setAvatarUrl(cachedUrl);
+      return;
+    }
+
+    if (hasFetched.current) return;
+
+    const fetchAvatar = async () => {
+      hasFetched.current = true;
       try {
         let response;
-        if (role === "CHILD") {
-          response = await childApi.profile.getAvatar(userId, token);
+        if (user.role === "CHILD") {
+          response = await childApi.profile.getAvatar(user.userId, user.token);
         } else {
-          response = await userApi.profile.avatar.get(token);
+          response = await userApi.profile.avatar.get(user.token);
         }
 
-        if (response && response?.avatar && response?.avatar?.url) {
-          setAvatarUrl(response?.avatar?.url);
+        const url = response?.avatar?.url || response?.url || null;
+
+        if (url) {
+          setAvatarUrl(url);
+          sessionStorage.setItem(cacheKey, url);
         } else {
           setAvatarUrl(null);
         }
@@ -56,8 +69,8 @@ const useAvatarUrl = (user: ReturnType<typeof getAuth>) => {
       }
     };
 
-    fetchUrl();
-  }, [userId, token, role]);
+    fetchAvatar();
+  }, [user?.userId, user?.token, user?.role]);
 
   return avatarUrl;
 };
