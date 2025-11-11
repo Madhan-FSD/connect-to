@@ -9,10 +9,18 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mode === "development" && componentTagger()].filter(
+    Boolean
+  ),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  // Add this section for production deployment
+  base: "/", // ensures assets are loaded correctly
+  build: {
+    outDir: "dist", // Vercel looks for dist/
+    emptyOutDir: true, // clean old build files
   },
 }));
