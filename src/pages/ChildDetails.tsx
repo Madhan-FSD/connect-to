@@ -31,7 +31,7 @@ export default function ChildDetails() {
   const fetchChildDetails = async () => {
     if (!user || !childId) return;
     try {
-      const response = await userApi.getChildActivityLog(childId, user.token);
+      const response = await userApi.getChildDetails(childId, user.token);
       setChildData(response.childProfile);
       setActivityLog(response.activityLog || []);
     } catch (error) {
@@ -47,7 +47,7 @@ export default function ChildDetails() {
   ) => {
     if (!user || !childId) return;
     try {
-      await userApi.updateChildPermission(
+      await userApi.updateChildPermissions(
         childId,
         permissionKey,
         value,

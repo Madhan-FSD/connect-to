@@ -14,6 +14,7 @@ import { Image as ImageIcon, FileText, Copy, Check } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { aiApi } from "@/lib/api";
+import { Badge } from "./ui/badge";
 
 export const AIImageFeatures = () => {
   const [activeTab, setActiveTab] = useState("caption");
@@ -180,18 +181,20 @@ export const AIImageFeatures = () => {
                       </div>
                     </div>
                     {result.objects && result.objects.length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium mb-1">
+                      <div className="pt-3 border-t space-y-2">
+                        <p className="text-sm font-medium text-primary">
                           Objects Detected:
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {result.objects.map((obj: string, idx: number) => (
-                            <span
+                          {result.objects.map((obj: any, idx: number) => (
+                            <Badge
                               key={idx}
-                              className="text-xs bg-secondary px-2 py-1 rounded"
+                              variant="secondary"
+                              title={obj.description}
+                              className="cursor-help"
                             >
-                              {obj}
-                            </span>
+                              {obj.name.toUpperCase()}
+                            </Badge>
                           ))}
                         </div>
                       </div>

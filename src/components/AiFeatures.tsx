@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -30,6 +31,8 @@ import {
   AlertTriangle,
   Copy,
   Check,
+  Image,
+  BookOpen,
 } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -39,6 +42,7 @@ export const AIFeatures = () => {
   const [activeTab, setActiveTab] = useState("moderation");
   const [inputText, setInputText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [interests, setInterests] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("es");
   const [result, setResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,20 +58,34 @@ export const AIFeatures = () => {
 
   const executeAIFeature = async (
     featureName: string,
-    apiCall: () => Promise<any>
+    apiCall: () => Promise<any>,
+    clearText: boolean = true
   ) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("User not authenticated.");
+      return;
+    }
     setIsLoading(true);
     setResult(null);
     try {
       const response = await apiCall();
       setResult(response);
       toast.success(`${featureName} completed successfully!`);
+      if (clearText) setInputText("");
     } catch (error: any) {
       toast.error(error.error || `Failed to execute ${featureName}`);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setInputText("");
+    setImageUrl("");
+    setInterests("");
+    setResult(null);
+    setIsLoading(false);
   };
 
   return (
@@ -84,8 +102,8 @@ export const AIFeatures = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-2 lg:grid-cols-6 gap-2 h-auto">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList className="grid grid-cols-3 lg:grid-cols-6 gap-2 h-auto">
               <TabsTrigger
                 value="moderation"
                 className="flex items-center gap-1"
@@ -115,9 +133,10 @@ export const AIFeatures = () => {
                 <Languages className="h-3 w-3" />
                 <span className="hidden sm:inline">Translate</span>
               </TabsTrigger>
-              <TabsTrigger value="enhance" className="flex items-center gap-1">
-                <Lightbulb className="h-3 w-3" />
-                <span className="hidden sm:inline">Enhance</span>
+
+              <TabsTrigger value="path" className="flex items-center gap-1">
+                <BookOpen className="h-3 w-3" />
+                <span className="hidden sm:inline">Learning Path</span>
               </TabsTrigger>
             </TabsList>
 
@@ -221,20 +240,9 @@ export const AIFeatures = () => {
                         {result.sentiment?.toUpperCase()}
                       </Badge>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Confidence:</span>
-                        <span className="font-medium">
-                          {result.confidence}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${result.confidence}%` }}
-                        />
-                      </div>
-                    </div>
+
+                    {/* REMOVED: Confidence Display */}
+
                     {result.analysis && (
                       <p className="text-sm text-muted-foreground">
                         {result.analysis}
@@ -369,8 +377,11 @@ export const AIFeatures = () => {
               </div>
               <Button
                 onClick={() =>
-                  executeAIFeature("Translation", () =>
-                    aiApi.translate(inputText, targetLanguage, user!.token)
+                  executeAIFeature(
+                    "Translation",
+                    () =>
+                      aiApi.translate(inputText, targetLanguage, user!.token),
+                    false // Don't clear text input after translation
                   )
                 }
                 disabled={isLoading || !inputText}
@@ -383,7 +394,9 @@ export const AIFeatures = () => {
                 <Card className="border-primary/20">
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm">{result.translation}</p>
+                      <p className="text-sm font-medium">
+                        {result.translation}
+                      </p>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -401,61 +414,157 @@ export const AIFeatures = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="enhance" className="space-y-4 mt-4">
+            <TabsContent value="media" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="enhance-text">Text to Enhance</Label>
+                <Label htmlFor="image-url">Image URL</Label>
+                <Input
+                  id="image-url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Enter a public image URL..."
+                />
+              </div>
+              {imageUrl && (
+                <div className="flex justify-center border rounded-lg p-2 bg-muted/20">
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
+                    className="max-h-48 object-contain rounded"
+                  />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() =>
+                    executeAIFeature("Generate Caption", () =>
+                      aiApi.generateCaption(imageUrl, user!.token)
+                    )
+                  }
+                  disabled={isLoading || !imageUrl}
+                  className="flex-1"
+                >
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  {isLoading ? "Generating..." : "Generate Caption"}
+                </Button>
+                <Button
+                  onClick={() =>
+                    executeAIFeature("Describe Image", () =>
+                      aiApi.describeImage(imageUrl, user!.token)
+                    )
+                  }
+                  disabled={isLoading || !imageUrl}
+                  className="flex-1"
+                  variant="outline"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isLoading ? "Describing..." : "Describe Image"}
+                </Button>
+              </div>
+              {result && (result.caption || result.description) && (
+                <Card className="border-primary/20">
+                  <CardContent className="pt-6 space-y-3">
+                    {result.caption && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          Caption Suggestion:
+                        </p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm text-foreground">
+                            {result.caption}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopy(result.caption)}
+                          >
+                            {copied ? (
+                              <Check className="h-4 w-4" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {result.description && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          Image Description:
+                        </p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm text-muted-foreground">
+                            {result.description}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopy(result.description)}
+                          >
+                            {copied ? (
+                              <Check className="h-4 w-4" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="path" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="path-interests">My Career Interests</Label>
                 <Textarea
-                  id="enhance-text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Enter text to improve grammar, style, and clarity..."
+                  id="path-interests"
+                  value={interests}
+                  onChange={(e) => setInterests(e.target.value)}
+                  placeholder="e.g., Cloud Computing, Data Science, Frontend Development..."
                   rows={4}
                 />
               </div>
               <Button
                 onClick={() =>
-                  executeAIFeature("Text Enhancement", () =>
-                    aiApi.enhanceText(inputText, user!.token)
+                  executeAIFeature("Learning Path Generation", () =>
+                    aiApi.generateLearningPath(interests, user!.token)
                   )
                 }
-                disabled={isLoading || !inputText}
+                disabled={isLoading || !interests}
                 className="w-full"
               >
-                <Lightbulb className="h-4 w-4 mr-2" />
-                {isLoading ? "Enhancing..." : "Enhance Text"}
+                <BookOpen className="h-4 w-4 mr-2" />
+                {isLoading ? "Generating Path..." : "Generate Learning Path"}
               </Button>
-              {result && result.enhanced && (
+
+              {result && result.topics && (
                 <Card className="border-primary/20">
-                  <CardContent className="pt-6 space-y-4">
-                    <div>
-                      <p className="text-sm font-medium mb-2">
-                        Enhanced Version:
-                      </p>
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm">{result.enhanced}</p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopy(result.enhanced)}
+                  <CardContent className="pt-6">
+                    <p className="text-sm font-medium mb-2">
+                      Suggested Path for {interests}:
+                    </p>
+                    <div className="space-y-3">
+                      {result.topics.map((step: any, index: number) => (
+                        <div
+                          key={index}
+                          className="p-3 border rounded-md bg-secondary/20"
                         >
-                          {copied ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
+                          <p className="font-semibold text-sm">
+                            {index + 1}. {step.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {step.description}
+                          </p>
+
+                          {step.resources && Array.isArray(step.resources) && (
+                            <div className="text-xs mt-1 italic text-muted-foreground">
+                              **Key Resources:** {step.resources.join(", ")}
+                            </div>
                           )}
-                        </Button>
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                    {result.improvements && (
-                      <div>
-                        <p className="text-sm font-medium mb-1">
-                          Improvements Made:
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {result.improvements}
-                        </p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               )}

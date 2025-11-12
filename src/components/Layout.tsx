@@ -24,56 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { userApi, childApi } from "@/lib/api";
-
-const useAvatarUrl = (user: ReturnType<typeof getAuth>) => {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const hasFetched = useRef(false);
-
-  useEffect(() => {
-    if (!user?.userId || !user?.token) {
-      setAvatarUrl(null);
-      return;
-    }
-
-    const cacheKey = `avatar_${user.userId}`;
-    const cachedUrl = sessionStorage.getItem(cacheKey);
-
-    if (cachedUrl) {
-      setAvatarUrl(cachedUrl);
-      return;
-    }
-
-    if (hasFetched.current) return;
-
-    const fetchAvatar = async () => {
-      hasFetched.current = true;
-      try {
-        let response;
-        if (user.role === "CHILD") {
-          response = await childApi.profile.getAvatar(user.userId, user.token);
-        } else {
-          response = await userApi.profile.avatar.get(user.token);
-        }
-
-        const url = response?.avatar?.url || response?.url || null;
-
-        if (url) {
-          setAvatarUrl(url);
-          sessionStorage.setItem(cacheKey, url);
-        } else {
-          setAvatarUrl(null);
-        }
-      } catch (error) {
-        console.error("Failed to fetch avatar:", error);
-        setAvatarUrl(null);
-      }
-    };
-
-    fetchAvatar();
-  }, [user?.userId, user?.token, user?.role]);
-
-  return avatarUrl;
-};
+import { useAvatarUrl } from "./hooks/useAvatarUrl";
 
 interface LayoutProps {
   children: ReactNode;
@@ -93,18 +44,22 @@ export const Layout = ({ children }: LayoutProps) => {
 
   if (!user) return <>{children}</>;
 
-  const navItems = [
-    ...(user.role === "PARENT" || user.role === "NORMAL_USER"
-      ? [{ icon: Home, label: "Dashboard", path: "/" }]
-      : []),
+  const dashboardItem = [{ icon: Home, label: "Dashboard", path: "/" }];
 
+  const coreItems = [
     { icon: Newspaper, label: "Feed", path: "/feeds" },
     { icon: Users, label: "Network", path: "/network" },
     { icon: User, label: "Profile", path: "/profile" },
     { icon: Plus, label: "Channel", path: "/create-channel" },
     { icon: Sparkles, label: "AI Hub", path: "/ai-hub" },
-    { icon: Gamepad2, label: "AI Games", path: "/ai-games" },
   ];
+
+  const aiGamesItem =
+    user.role === "CHILD"
+      ? [{ icon: Gamepad2, label: "AI Games", path: "/ai-games" }]
+      : [];
+
+  const navItems = [...dashboardItem, ...coreItems, ...aiGamesItem];
 
   const displayName = user.name || user.email?.split("@")[0] || "User";
   const userRoleDisplay = user.role.toLowerCase().replace("_", " ");

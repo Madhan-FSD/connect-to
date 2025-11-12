@@ -25,14 +25,19 @@ import { authApi } from "@/lib/api";
 
 type LoginStep = "email" | "otp" | "child-select";
 
+type ChildInfo = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  age: number;
+};
+
 export const Login = () => {
   const [loginType, setLoginType] = useState<"parent" | "child">("parent");
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [children, setChildren] = useState<
-    Array<{ id: string; name: string; age: number }>
-  >([]);
+  const [children, setChildren] = useState<Array<ChildInfo>>([]);
   const [selectedChild, setSelectedChild] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -138,9 +143,14 @@ export const Login = () => {
     setLoading(true);
 
     try {
-      const childName =
-        children.find((c) => c.id === selectedChild)?.name || "";
-      const result = await authApi.loginChild(email, childName, accessCode);
+      const child = children.find((c) => c.id === selectedChild);
+      const childFullName = child
+        ? `${child.firstName} ${child.lastName}`
+        : "Child";
+
+      // The selectedChild state holds the child's ID (the correct value).
+      // This call correctly passes: (email, childId, accessCode)
+      const result = await authApi.loginChild(email, selectedChild, accessCode);
 
       if (result.error) {
         toast({
@@ -152,13 +162,13 @@ export const Login = () => {
         saveAuth({
           userId: result.child.id,
           email: email,
-          name: result.child.name,
+          name: `${result.child.firstName} ${result.child.lastName}`,
           role: result.role,
           token: result.token,
           parentId: result.parentId,
         });
         toast({
-          title: `Welcome, ${result.child.name}!`,
+          title: `Welcome, ${childFullName}!`,
           description: "Login successful",
         });
         navigate("/");
@@ -189,7 +199,11 @@ export const Login = () => {
         <CardContent>
           <Tabs
             value={loginType}
-            onValueChange={(v) => setLoginType(v as "parent" | "child")}
+            onValueChange={(v) => {
+              setLoginType(v as "parent" | "child");
+              setStep("email");
+              setEmail("");
+            }}
           >
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="parent">Parent/User</TabsTrigger>
@@ -289,6 +303,7 @@ export const Login = () => {
                       value={selectedChild}
                       onValueChange={setSelectedChild}
                       required
+                      disabled={loading}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose your name" />
@@ -298,7 +313,9 @@ export const Login = () => {
                           <SelectItem key={child.id} value={child.id}>
                             <div className="flex items-center gap-2">
                               <User className="h-4 w-4" />
-                              {child.name} ({child.age} years)
+                              {/* Using firstName and lastName from the schema */}
+                              {`${child.firstName} ${child.lastName}`} (
+                              {child.age} years)
                             </div>
                           </SelectItem>
                         ))}
@@ -307,23 +324,25 @@ export const Login = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="access-code">Access Code</Label>
+                    <Label htmlFor="access-code">Access Code (PIN)</Label>
                     <Input
                       id="access-code"
                       type="password"
-                      placeholder="Enter your access code"
+                      placeholder="Enter your access code (PIN)"
                       value={accessCode}
                       onChange={(e) => setAccessCode(e.target.value)}
                       required
+                      disabled={loading}
+                      maxLength={4} // Assuming a typical 4-digit PIN based on context
                     />
                   </div>
 
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={loading || !selectedChild}
+                    disabled={loading || !selectedChild || !accessCode.trim()}
                   >
-                    Sign In
+                    Sign In as Child
                   </Button>
                   <Button
                     type="button"
@@ -335,7 +354,7 @@ export const Login = () => {
                       setAccessCode("");
                     }}
                   >
-                    Back
+                    Back to Email
                   </Button>
                 </form>
               )}

@@ -13,10 +13,18 @@ export const connectionApi = {
       body: JSON.stringify({ recipientId, message }),
     }),
 
-  getPending: (token: string) =>
-    apiFetch(`${CONNECTIONS_BASE_URL}/pending`, {
+  getPending: (token: string, page = 1, limit = 10) =>
+    apiFetch(`${CONNECTIONS_BASE_URL}/pending?page=${page}&limit=${limit}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
+
+  getSentPending: (token: string, page = 1, limit = 10) =>
+    apiFetch(
+      `${CONNECTIONS_BASE_URL}/sent-pending?page=${page}&limit=${limit}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    ),
 
   accept: (connectionId: string, token: string) =>
     apiFetch(`${CONNECTIONS_BASE_URL}/${connectionId}/accept`, {
@@ -36,8 +44,8 @@ export const connectionApi = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  getConnections: (userId: string, token: string) =>
-    apiFetch(`${CONNECTIONS_BASE_URL}/${userId}`, {
+  getConnections: (userId: string, token: string, page = 1, limit = 10) =>
+    apiFetch(`${CONNECTIONS_BASE_URL}/${userId}?page=${page}&limit=${limit}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
@@ -49,5 +57,15 @@ export const connectionApi = {
   getSuggestions: (token: string, limit = 10) =>
     apiFetch(`${CONNECTIONS_BASE_URL}/suggestions?limit=${limit}`, {
       headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  blockUser: (userIdToBlock: string, token: string) =>
+    apiFetch(`${CONNECTIONS_BASE_URL}/block`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userIdToBlock }),
     }),
 };

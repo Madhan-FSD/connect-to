@@ -36,21 +36,68 @@ export default function ProfileDetailsManager({
 
   const [formData, setFormData] = useState(profileData || {});
 
+  const isAdultRole = user.role === "PARENT" || user.role === "NORMAL_USER";
   const isChildProfile = !!childId || user.role === "CHILD";
 
-  const canEdit =
-    !isChildProfile ||
-    (profileData?.permissions?.canUpdateCoreProfile && user.role === "CHILD");
+  const isParentViewingChild = !!childId && user.role === "PARENT";
+  const isAdultViewingSelf = !isChildProfile && isAdultRole;
+  const isAdultManagingProfile = isAdultViewingSelf || isParentViewingChild;
+
+  const canEditCore =
+    isAdultManagingProfile ||
+    (user.role === "CHILD" && profileData?.permissions?.canUpdateCoreProfile);
 
   const canChangeBanner = profileData?.permissions?.canAddProfileBanner;
   const canDeleteBanner = profileData?.permissions?.canDeleteProfileBanner;
   const canChangeAvatar = profileData?.permissions?.canAddAvatar;
   const canDeleteAvatar = profileData?.permissions?.canDeleteAvatar;
 
-  const isAdultRole = user.role === "PARENT" || user.role === "NORMAL_USER";
-  const isParentViewingChild = !!childId && user.role === "PARENT";
-  const isAdultViewingSelf = !isChildProfile && isAdultRole;
-  const userCanEditMedia = isParentViewingChild || isAdultViewingSelf;
+  const userCanEditMedia = isAdultManagingProfile;
+
+  const getSectionCanEdit = (sectionName: string): boolean => {
+    if (isAdultManagingProfile) return true;
+
+    if (user.role === "CHILD") {
+      const permissions = profileData?.permissions;
+      if (!permissions) return false;
+
+      const keyMap: { [key: string]: string[] } = {
+        Addresses: ["canUpdateCoreProfile"],
+        Skills: ["canAddSkills", "canUpdateSkills", "canDeleteSkills"],
+        Experiences: [
+          "canAddExperiences",
+          "canUpdateExperiences",
+          "canDeleteExperiences",
+        ],
+        Education: [
+          "canAddEducations",
+          "canUpdateEducations",
+          "canDeleteEducations",
+        ],
+        Projects: ["canAddProjects", "canUpdateProjects", "canDeleteProjects"],
+        Certifications: [
+          "canAddCertifications",
+          "canUpdateCertifications",
+          "canDeleteCertifications",
+        ],
+        Achievements: [
+          "canAddAchievements",
+          "canUpdateAchievements",
+          "canDeleteAchievements",
+        ],
+        Interests: [
+          "canAddInterests",
+          "canUpdateInterests",
+          "canDeleteInterests",
+        ],
+      };
+
+      const permissionKeys = keyMap[sectionName] || [];
+
+      return permissionKeys.some((key) => permissions[key]);
+    }
+    return false;
+  };
 
   const handleChange = (key, value) => {
     if (key.includes(".")) {
@@ -72,27 +119,22 @@ export default function ProfileDetailsManager({
       setSaving(true);
       const payload: { [key: string]: any } = {};
 
-      if (isChildProfile) {
-        if (formData.firstName) payload.firstName = formData.firstName;
-        if (formData.lastName) payload.lastName = formData.lastName;
-        if (formData.dob) payload.dob = formData.dob;
-        if (formData.profileHeadline)
-          payload.profileHeadline = formData.profileHeadline;
-        if (formData.about) payload.about = formData.about;
-      } else {
-        if (formData.firstName) payload.firstName = formData.firstName;
-        if (formData.lastName) payload.lastName = formData.lastName;
-        if (formData.profileHeadline)
-          payload.profileHeadline = formData.profileHeadline;
-        if (formData.about) payload.about = formData.about;
+      if (formData.firstName) payload.firstName = formData.firstName;
+      if (formData.lastName) payload.lastName = formData.lastName;
+      if (formData.profileHeadline)
+        payload.profileHeadline = formData.profileHeadline;
+      if (formData.about) payload.about = formData.about;
 
+      if (isChildProfile) {
+        if (formData.dob) payload.dob = formData.dob;
+      } else {
+        if (formData.dob) payload.dob = formData.dob;
         if (formData.mobile?.countryCode || formData.mobile?.phoneNumber) {
           payload.mobile = {
             countryCode: formData.mobile.countryCode || "",
             phoneNumber: formData.mobile.phoneNumber || "",
           };
         }
-        if (formData.dob) payload.dob = formData.dob;
       }
 
       if (childId)
@@ -114,9 +156,8 @@ export default function ProfileDetailsManager({
 
     const file = e.target.files[0];
     const hasPermission =
-      type === "avatar"
-        ? userCanEditMedia || canChangeAvatar
-        : userCanEditMedia || canChangeBanner;
+      userCanEditMedia ||
+      (type === "avatar" ? canChangeAvatar : canChangeBanner);
 
     if (!hasPermission) {
       toast.error("You do not have permission to upload this file.");
@@ -153,9 +194,8 @@ export default function ProfileDetailsManager({
 
   const handleDeleteMedia = async (type) => {
     const hasPermission =
-      type === "avatar"
-        ? userCanEditMedia || canDeleteAvatar
-        : userCanEditMedia || canDeleteBanner;
+      userCanEditMedia ||
+      (type === "avatar" ? canDeleteAvatar : canDeleteBanner);
 
     if (!hasPermission) {
       toast.error("You do not have permission to delete this file.");
@@ -232,7 +272,6 @@ export default function ProfileDetailsManager({
         )}
       </div>
 
-      {/* Headline */}
       {profileData?.profileHeadline && (
         <div className="flex flex-col pb-2">
           <span className="text-sm font-medium text-muted-foreground">
@@ -244,7 +283,6 @@ export default function ProfileDetailsManager({
         </div>
       )}
 
-      {/* About */}
       {profileData?.about && (
         <div className="flex flex-col pt-2">
           <span className="text-sm font-medium text-muted-foreground">
@@ -328,7 +366,7 @@ export default function ProfileDetailsManager({
               <Avatar className="h-28 w-28">
                 <AvatarFallback className="text-3xl">
                   {(
-                    profileData.firstName ||
+                    profileData.firstName?.[0] ||
                     user.email?.[0] ||
                     "?"
                   ).toUpperCase()}
@@ -381,7 +419,8 @@ export default function ProfileDetailsManager({
             <User className="h-5 w-5 text-secondary" />
             Core Information
           </CardTitle>
-          {canEdit && (
+
+          {canEditCore && (
             <Button
               onClick={
                 editingCore ? saveCoreProfile : () => setEditingCore(true)
@@ -558,35 +597,33 @@ export default function ProfileDetailsManager({
         </CardContent>
       </Card>
 
-      {!isChildProfile && (
-        <ProfileSection
-          title="Addresses"
-          icon={MapPin}
-          fields={[
-            { label: "Street", key: "street" },
-            { label: "City", key: "city" },
-            { label: "State", key: "state" },
-            { label: "Zip Code", key: "zipCode" },
-            { label: "Country", key: "country" },
-            {
-              label: "Address Type",
-              key: "type",
-              type: "buttonGroup",
-              options: ["HOME", "WORK", "OTHER"],
-            },
-            {
-              label: "Primary Address",
-              key: "isPrimary",
-              type: "boolean",
-            },
-          ]}
-          data={profileData.addresses || []}
-          childId={childId}
-          userToken={user.token}
-          fetchProfileData={fetchProfileData}
-          canEdit={canEdit}
-        />
-      )}
+      <ProfileSection
+        title="Addresses"
+        icon={MapPin}
+        fields={[
+          { label: "Street", key: "street" },
+          { label: "City", key: "city" },
+          { label: "State", key: "state" },
+          { label: "Zip Code", key: "zipCode" },
+          { label: "Country", key: "country" },
+          {
+            label: "Address Type",
+            key: "type",
+            type: "buttonGroup",
+            options: ["HOME", "WORK", "OTHER"],
+          },
+          {
+            label: "Primary Address",
+            key: "isPrimary",
+            type: "boolean",
+          },
+        ]}
+        data={profileData.addresses || []}
+        childId={childId}
+        userToken={user.token}
+        fetchProfileData={fetchProfileData}
+        canEdit={getSectionCanEdit("Addresses")}
+      />
 
       <ProfileSection
         title="Skills"
@@ -596,26 +633,28 @@ export default function ProfileDetailsManager({
         childId={childId}
         userToken={user.token}
         fetchProfileData={fetchProfileData}
-        canEdit={canEdit}
+        canEdit={getSectionCanEdit("Skills")}
       />
 
-      <ProfileSection
-        title="Experiences"
-        icon={Briefcase}
-        fields={[
-          { label: "Title", key: "title" },
-          { label: "Company", key: "company" },
-          { label: "Location", key: "location" },
-          { label: "Start Date", key: "startDate", type: "date" },
-          { label: "End Date", key: "endDate", type: "date" },
-          { label: "Description", key: "description", type: "textarea" },
-        ]}
-        data={profileData.experiences || []}
-        childId={childId}
-        userToken={user.token}
-        fetchProfileData={fetchProfileData}
-        canEdit={canEdit}
-      />
+      {!isChildProfile && (
+        <ProfileSection
+          title="Experiences"
+          icon={Briefcase}
+          fields={[
+            { label: "Title", key: "title" },
+            { label: "Company", key: "company" },
+            { label: "Location", key: "location" },
+            { label: "Start Date", key: "startDate", type: "date" },
+            { label: "End Date", key: "endDate", type: "date" },
+            { label: "Description", key: "description", type: "textarea" },
+          ]}
+          data={profileData.experiences || []}
+          childId={childId}
+          userToken={user.token}
+          fetchProfileData={fetchProfileData}
+          canEdit={getSectionCanEdit("Experiences")}
+        />
+      )}
 
       <ProfileSection
         title="Education"
@@ -631,7 +670,7 @@ export default function ProfileDetailsManager({
         childId={childId}
         userToken={user.token}
         fetchProfileData={fetchProfileData}
-        canEdit={canEdit}
+        canEdit={getSectionCanEdit("Education")}
       />
 
       <ProfileSection
@@ -649,7 +688,7 @@ export default function ProfileDetailsManager({
         childId={childId}
         userToken={user.token}
         fetchProfileData={fetchProfileData}
-        canEdit={canEdit}
+        canEdit={getSectionCanEdit("Projects")}
       />
 
       <ProfileSection
@@ -666,7 +705,7 @@ export default function ProfileDetailsManager({
         childId={childId}
         userToken={user.token}
         fetchProfileData={fetchProfileData}
-        canEdit={canEdit}
+        canEdit={getSectionCanEdit("Certifications")}
       />
 
       <ProfileSection
@@ -682,7 +721,7 @@ export default function ProfileDetailsManager({
         childId={childId}
         userToken={user.token}
         fetchProfileData={fetchProfileData}
-        canEdit={canEdit}
+        canEdit={getSectionCanEdit("Achievements")}
       />
 
       <ProfileSection
@@ -697,7 +736,7 @@ export default function ProfileDetailsManager({
         childId={childId}
         userToken={user.token}
         fetchProfileData={fetchProfileData}
-        canEdit={canEdit}
+        canEdit={getSectionCanEdit("Interests")}
       />
     </div>
   );

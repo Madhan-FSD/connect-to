@@ -21,6 +21,11 @@ export const aiApi = {
       body: JSON.stringify(data),
     }),
 
+  getActivityInsights: async (childId: string, token: string) =>
+    await apiFetch(`${API_BASE_URL}/ai/activity-insights/${childId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   moderate: (content: string, token: string) =>
     apiFetch(`${API_BASE_URL}/ai/moderate-content`, {
       method: "POST",
@@ -39,11 +44,6 @@ export const aiApi = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ content }),
-    }),
-
-  getSmartRecommendations: async (userId: string, token: string) =>
-    apiFetch(`${API_BASE_URL}/ai/recommendations/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
     }),
 
   generateCaption: (imageUrl: string, token: string) =>
@@ -86,16 +86,6 @@ export const aiApi = {
       body: JSON.stringify({ content, targetLanguage }),
     }),
 
-  generateLearningPath: (interests: string, token: string) =>
-    apiFetch(`${API_BASE_URL}/ai/learning-path`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ interests }),
-    }),
-
   enhanceText: async (content: string, token: string) =>
     apiFetch(`${API_BASE_URL}/ai/enhance-text`, {
       method: "POST",
@@ -116,9 +106,14 @@ export const aiApi = {
       body: JSON.stringify({ imageUrl }),
     }),
 
-  getActivityInsights: async (childId: string, token: string) =>
-    await apiFetch(`${API_BASE_URL}/ai/activity-insights/${childId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+  generateLearningPath: (interests: string, token: string) =>
+    apiFetch(`${API_BASE_URL}/ai/learning-path`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ interests }),
     }),
 
   calculateSafetyScore: async (content: string, token: string) =>
@@ -131,6 +126,11 @@ export const aiApi = {
       body: JSON.stringify({ content }),
     }),
 
+  getSmartRecommendations: async (userId: string, token: string) =>
+    apiFetch(`${API_BASE_URL}/ai/recommendations/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   games: {
     generateTrivia: async (
       topic: string,
@@ -138,7 +138,7 @@ export const aiApi = {
       questionCount: number,
       token: string
     ) =>
-      apiFetch(`${API_BASE_URL}/games/trivia`, {
+      apiFetch(`${API_BASE_URL}/ai/games/trivia`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -153,7 +153,7 @@ export const aiApi = {
       userChoice: string,
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/games/story-adventure`, {
+      await apiFetch(`${API_BASE_URL}/ai/games/story-adventure`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -168,7 +168,7 @@ export const aiApi = {
       category: string,
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/games/word-master`, {
+      await apiFetch(`${API_BASE_URL}/ai/games/word-master`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -183,7 +183,7 @@ export const aiApi = {
       topics: string[],
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/games/math-challenge`, {
+      await apiFetch(`${API_BASE_URL}/ai/games/math-challenge`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -197,7 +197,7 @@ export const aiApi = {
       difficulty: string,
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/games/code-detective`, {
+      await apiFetch(`${API_BASE_URL}/ai/games/code-detective`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +211,7 @@ export const aiApi = {
       questionsWithAnswers: any[],
       token: string
     ) =>
-      apiFetch(`${API_BASE_URL}/games/${childId}/trivia/submit`, {
+      apiFetch(`${API_BASE_URL}/ai/games/${childId}/trivia/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -225,7 +225,7 @@ export const aiApi = {
       data: { storySegment: string; choice: string; isCorrect: boolean },
       token: string
     ) =>
-      apiFetch(`${API_BASE_URL}/games/${childId}/story-adventure/submit`, {
+      apiFetch(`${API_BASE_URL}/ai/games/${childId}/story-adventure/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -240,7 +240,7 @@ export const aiApi = {
       answers: any[],
       token: string
     ) =>
-      apiFetch(`${API_BASE_URL}/games/${childId}/word-master/submit`, {
+      apiFetch(`${API_BASE_URL}/ai/games/${childId}/word-master/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -254,7 +254,7 @@ export const aiApi = {
       problemsWithAnswers: any[],
       token: string
     ) =>
-      apiFetch(`${API_BASE_URL}/games/${childId}/math-challenge/submit`, {
+      apiFetch(`${API_BASE_URL}/ai/games/${childId}/math-challenge/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -269,7 +269,7 @@ export const aiApi = {
       puzzlesWithAnswers: any[],
       token: string
     ) =>
-      apiFetch(`${API_BASE_URL}/games/${childId}/code-detective/submit`, {
+      apiFetch(`${API_BASE_URL}/ai/games/${childId}/code-detective/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

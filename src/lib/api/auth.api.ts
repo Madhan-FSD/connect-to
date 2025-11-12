@@ -22,11 +22,11 @@ export const authApi = {
       body: JSON.stringify({ email, otp }),
     }),
 
-  loginChild: (email: string, childName: string, accessCode: string) =>
+  loginChild: (email: string, childId: string, accessCode: string) =>
     apiFetch(`${API_BASE_URL}/auth/login-child`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, childName, accessCode }),
+      body: JSON.stringify({ email, childId, accessCode }),
     }),
 
   loginEmailCheck: async (email: string) =>
