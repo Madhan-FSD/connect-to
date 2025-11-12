@@ -20,8 +20,8 @@ import { isAuthenticated } from "./lib/auth";
 import "./App.css";
 import AIHub from "./pages/AiHub";
 import AIGames from "./pages/AiGames";
-import FeedPage from "./pages/FeedPage";
 import ChildControlPage from "./pages/ChildControlPage";
+import FeedPage from "./pages/FeedPage";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return isAuthenticated() ? <>{children}</> : <Navigate to="/auth/login" />;

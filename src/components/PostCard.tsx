@@ -41,6 +41,8 @@ interface Comment {
   content: string;
   ownerId: Owner;
   createdAt: string;
+  totalReactions?: number;
+  userReaction?: string | null;
 }
 
 interface Post {
@@ -91,6 +93,31 @@ export function PostCard({ post }: { post: Post }) {
       setShowPicker(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to react");
+    }
+  };
+
+  const handleCommentReaction = async (commentId: string, type: string) => {
+    try {
+      const response = await reactionApi.toggleReaction(
+        "Comment",
+        commentId,
+        type,
+        user!.token
+      );
+
+      setComments((prev) =>
+        prev.map((c) =>
+          c._id === commentId
+            ? {
+                ...c,
+                totalReactions: response.totalReactions ?? c.totalReactions,
+                userReaction: response.userReaction || type,
+              }
+            : c
+        )
+      );
+    } catch (err: any) {
+      toast.error("Failed to react on comment");
     }
   };
 
@@ -168,24 +195,13 @@ export function PostCard({ post }: { post: Post }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {!isOwnPost && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-blue-600 font-semibold hover:bg-blue-50"
-            >
-              + Follow
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-gray-500 hover:text-gray-700 rounded-full"
-          >
-            <MoreVertical className="h-5 w-5" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-500 hover:text-gray-700 rounded-full"
+        >
+          <MoreVertical className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Content */}
@@ -230,7 +246,6 @@ export function PostCard({ post }: { post: Post }) {
 
       {/* Footer actions */}
       <div className="flex justify-around items-center py-1.5 border-t border-gray-100 text-sm text-gray-600 relative overflow-visible">
-        {/* Like + Hover Picker */}
         <div
           className="relative flex flex-col items-center"
           onMouseEnter={() => {
@@ -343,12 +358,35 @@ export function PostCard({ post }: { post: Post }) {
                       </button>
                     )}
                   </div>
+
                   <p className="text-xs mt-0.5">{comment.content}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    {formatDistanceToNow(new Date(comment.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </p>
+
+                  {/* Reaction section for each comment */}
+                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() =>
+                          handleCommentReaction(comment._id, "LIKE")
+                        }
+                        className={`flex items-center gap-1 hover:text-blue-600 transition ${
+                          comment.userReaction ? "text-blue-600" : ""
+                        }`}
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                        <span>{comment.userReaction || "Like"}</span>
+                      </button>
+                    </div>
+                    <span className="text-gray-400">·</span>
+                    <button className="hover:text-gray-800 transition">
+                      Reply
+                    </button>
+                    <span className="text-gray-400">·</span>
+                    <span>
+                      {formatDistanceToNow(new Date(comment.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))
@@ -356,6 +394,7 @@ export function PostCard({ post }: { post: Post }) {
             <p className="text-xs text-gray-500">No comments yet</p>
           )}
 
+          {/* Add comment input */}
           <div className="flex items-center gap-2">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-gray-300 text-xs">

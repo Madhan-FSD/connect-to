@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getAuth } from "@/lib/auth";
 import { Layout } from "@/components/Layout";
+import { TrendingPostCard } from "@/components/TrendingPostCard";
 
 interface Owner {
   _id: string;
@@ -332,11 +333,7 @@ export default function FeedPage() {
                 ) : trending.length > 0 ? (
                   <div className="space-y-3">
                     {trending.map((post) => (
-                      <PostCard
-                        key={post._id}
-                        post={post}
-                        onDelete={() => handlePostDeleted(post._id)}
-                      />
+                      <TrendingPostCard key={post._id} post={post} />
                     ))}
                   </div>
                 ) : (
