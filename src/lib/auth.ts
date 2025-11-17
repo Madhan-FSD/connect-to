@@ -1,7 +1,8 @@
 export interface User {
   userId: string;
   email: string;
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   role: "PARENT" | "NORMAL_USER" | "CHILD";
   token: string;
   children?: Array<{
@@ -15,7 +16,9 @@ export interface User {
       canLike: boolean;
     };
   }>;
+  channel: object;
   parentId?: string;
+  avatar?: string;
 }
 
 export const AUTH_STORAGE_KEY = "user";

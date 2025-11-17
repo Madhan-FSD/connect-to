@@ -26,6 +26,8 @@ import {
   PlusCircle,
   Trophy,
   Gamepad2,
+  Rss,
+  Users,
 } from "lucide-react";
 import { reportsApi, userApi } from "@/lib/api";
 import { CreatePostModal } from "@/components/CreatePostModal";
@@ -49,8 +51,11 @@ interface DashboardPost {
 
 interface DashboardChannel {
   _id?: string;
+  handle: string;
   name?: string;
-  postsCount?: number;
+  subscribersCount?: number;
+  avatarUrl: string;
+  bannerUrl: string;
 }
 
 export interface UserDashboardData {
@@ -70,7 +75,7 @@ export interface UserDashboardData {
   achievementsCount: number;
   projectsCount: number;
   recentPosts: DashboardPost[];
-  channels: DashboardChannel[];
+  channel: DashboardChannel;
   children?: DashboardChild[];
   gamesPlayed?: number;
   totalScore?: number;
@@ -459,12 +464,12 @@ export default function Dashboard() {
     );
   };
 
-  const renderChannelOverview = (channels: DashboardChannel[]) => (
+  const renderChannelOverview = (channel: DashboardChannel | null) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center">
-          <Link className="h-5 w-5 mr-3 text-indigo-500" />
-          My Channels
+          <Rss className="h-5 w-5 mr-3 text-indigo-500" />
+          My Channel
         </CardTitle>
         <Button
           variant="secondary"
@@ -472,31 +477,57 @@ export default function Dashboard() {
           onClick={() => navigate("/create-channel")}
         >
           <Plus className="h-4 w-4 mr-2" />
-          New Channel
+
+          {channel && channel._id ? "Edit Channel" : "New Channel"}
         </Button>
       </CardHeader>
+
       <CardContent>
-        {channels?.length > 0 ? (
-          <ScrollArea className="h-48">
-            <div className="space-y-3 pr-4">
-              {channels.map((channel, index) => (
-                <div
-                  key={channel._id || index}
-                  className="flex justify-between items-center border-b pb-2 last:border-b-0 cursor-pointer hover:bg-gray-50 p-1 rounded-md"
-                  onClick={() => navigate(`/channels/${channel._id || "main"}`)}
-                >
-                  <span className="font-medium truncate">{channel.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {channel.postsCount || 0} Posts
-                  </span>
-                </div>
-              ))}
+        {channel && channel._id ? (
+          <div className="space-y-4">
+            <div className="flex items-end space-x-4">
+              <img
+                src={channel.avatarUrl || "placeholder-url"}
+                alt="Avatar"
+                className="h-16 w-16 rounded-full object-cover border-2 border-indigo-500"
+              />
+              <div>
+                <h4 className="text-xl font-bold">{channel.name}</h4>
+                <p className="text-sm text-indigo-600 font-mono">
+                  {channel.handle}
+                </p>
+              </div>
             </div>
-          </ScrollArea>
+
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <div className="flex items-center text-sm text-gray-600">
+                <Users className="h-4 w-4 mr-1 text-indigo-500" />
+                <span className="font-semibold text-gray-800 mr-1">
+                  {channel.subscribersCount.toLocaleString()}
+                </span>
+                Subscribers
+              </div>
+              <a
+                href={`/channel/${channel.handle.replace("@", "")}/${
+                  channel._id
+                }`}
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                View Page &rarr;
+              </a>
+            </div>
+          </div>
         ) : (
-          <p className="text-center text-muted-foreground">
-            You haven’t created any channels yet.
-          </p>
+          <div className="p-4 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <Rss className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="font-semibold text-gray-700">
+              Ready to share your insights?
+            </p>
+            <p className="text-sm text-gray-500">
+              Create your personal channel to start posting and building a
+              community.
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -604,7 +635,7 @@ export default function Dashboard() {
           <div className="lg:col-span-2 space-y-6">
             {renderProfileSection(dashboardData)}
             {/* {renderPostsFeed(dashboardData.recentPosts)} */}
-            {renderChannelOverview(dashboardData.channels)}
+            {renderChannelOverview(dashboardData.channel)}
           </div>
 
           <div className="lg:col-span-1 space-y-6">

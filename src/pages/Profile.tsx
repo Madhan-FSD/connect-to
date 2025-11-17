@@ -9,7 +9,7 @@ import { userApi, childApi, aiApi, postApi } from "@/lib/api";
 import ProfileDetailsManager from "@/components/profile/ProfileDetailsManager";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreatePostModal } from "@/components/CreatePostModal";
-import { PostCard } from "@/components/PostCard";
+import { PostCard } from "@/components/card/PostCard";
 import { AIProfileBuilder } from "@/components/AiProfileBuilder";
 
 export default function ProfilePage() {

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./utils";
+import { API_BASE_URL, apiFetch } from "./utils";
 
 const FEED_BASE_URL = `${API_BASE_URL}/feeds`;
 
@@ -25,4 +25,13 @@ export const feedApi = {
     });
     return response.json();
   },
+
+  getSubscriptions: (token?: string, page = 1, limit = 20) =>
+    apiFetch(`/feed/subscriptions?page=${page}&limit=${limit}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }),
 };

@@ -21,7 +21,11 @@ import "./App.css";
 import AIHub from "./pages/AiHub";
 import AIGames from "./pages/AiGames";
 import ChildControlPage from "./pages/ChildControlPage";
-import FeedPage from "./pages/FeedPage";
+import ChannelPage from "./pages/channel/ChannelPage";
+import SubscriptionsPage from "./pages/channel/SubscriptionPage";
+import ChannelSettings from "./pages/channel/ChannelSettings";
+import ChannelAnalyticsPage from "./pages/channel/ChannelAnalytics";
+import FeedPage from "./pages/feed/FeedPage";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return isAuthenticated() ? <>{children}</> : <Navigate to="/auth/login" />;
@@ -63,6 +67,17 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/channel/:handle/:channelId" element={<ChannelPage />} />
+        <Route path="/subscriptions" element={<SubscriptionsPage />} />
+        <Route
+          path="/channel/:channelId/settings"
+          element={<ChannelSettings />}
+        />
+        <Route
+          path="/channel/:channelId/analytics"
+          element={<ChannelAnalyticsPage />}
+        />
+
         <Route
           path="/ai-hub"
           element={

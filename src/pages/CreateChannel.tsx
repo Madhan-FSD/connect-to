@@ -45,14 +45,13 @@ export default function CreateChannel() {
       if (banner) formData.append("banner", banner);
 
       if (user?.role === "CHILD") {
-        formData.append("childId", user.userId);
-        await channelApi.createChildChannel(formData, user.token);
+        await channelApi.createChildChannel(user.userId, formData, user.token);
       } else {
-        await channelApi.createUserChannel(formData, user!.token);
+        await channelApi.createUserChannel(formData, user.token);
       }
 
       toast.success("Channel created successfully!");
-      navigate("/profile");
+      navigate("/");
     } catch (error: any) {
       toast.error(error.error || "Failed to create channel");
     } finally {

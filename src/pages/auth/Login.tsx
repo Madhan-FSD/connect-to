@@ -116,10 +116,13 @@ export const Login = () => {
         saveAuth({
           userId: result.userId,
           email: email,
-          name: result.name,
+          firstName: result.firstName,
+          lastName: result.lastName,
+          avatar: result.avatar,
           role: result.role,
           token: result.token,
           children: result.children,
+          channel: result.channel,
         });
         toast({
           title: "Welcome back!",
