@@ -5,6 +5,7 @@ export interface Owner {
   email?: string;
   avatar?: { url?: string };
   headline?: string;
+  handle?: string;
 }
 
 export interface Post {
@@ -14,35 +15,36 @@ export interface Post {
   mediaUrl?: string;
   thumbnailUrl?: string;
   videoDuration?: number;
-  contentType?:
+  contentType:
     | "TEXT"
     | "IMAGE"
     | "VIDEO"
     | "POST"
     | "VIDEO_CHANNEL"
     | "VIDEO_PROFILE";
+  userReaction?: string | null;
+  reactionsCount?: number;
   totalReactions?: number;
   commentsCount?: number;
   createdAt: string;
-  channelId: "691856b6556c0a716cd835c5";
+  channelId: string;
   channelType: "UserChannel";
-  playlistIds: [];
-  title: "Public Playlist Video";
-  description: "First Video On Public Playlist";
-  duration: 1;
-  viewsCount: 0;
-  likesCount: 0;
-  visibility: "PUBLIC";
-  videoStatus: "LIVE";
-  __v: 0;
-  score: 0;
-  channelName: string;
-  channelHandle: string;
-  channelAvatar: string;
-  channelDescription: string;
-  isSubscribed: boolean;
-  restricted: boolean;
-  secureUrl: string;
+  playlistIds: string[];
+  title: string;
+  description: string;
+  duration?: number;
+  viewsCount?: number;
+  likesCount?: number;
+  visibility: "PUBLIC" | "PRIVATE" | "SUBSCRIBERS_ONLY" | "PAID_ONLY";
+  videoStatus: "PROCESSING" | "LIVE" | "BLOCKED" | "DELETED" | "COURSE_LOCKED";
+  score?: number;
+  channelName?: string;
+  channelHandle?: string;
+  channelAvatar?: string;
+  channelDescription?: string;
+  isSubscribed?: boolean;
+  restricted?: boolean;
+  secureUrl?: string;
 }
 
 export interface Comment {
@@ -64,4 +66,5 @@ export interface User {
   avatar?: string;
   email?: string;
   headline?: string;
+  token: string;
 }

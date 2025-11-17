@@ -508,9 +508,7 @@ export default function Dashboard() {
                 Subscribers
               </div>
               <a
-                href={`/channel/${channel.handle.replace("@", "")}/${
-                  channel._id
-                }`}
+                href={`/channel/${channel.handle}/${channel._id}`}
                 className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
               >
                 View Page &rarr;

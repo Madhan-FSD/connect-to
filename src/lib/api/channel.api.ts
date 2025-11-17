@@ -179,31 +179,24 @@ export const channelvideosApi = {
 };
 
 export const channelplaylistApi = {
-  // Create a new playlist
   create: (payload: any, token: string) =>
     apiFetch(`/playlists/create`, "POST", payload, token),
 
-  // Get all playlists of logged-in user
   getMyPlaylists: (token: string) =>
     apiFetch(`/playlists/get-playlists`, "GET", undefined, token),
 
-  // Get playlist details
   get: (playlistId: string, token: string) =>
     apiFetch(`/playlists/${playlistId}`, "GET", undefined, token),
 
-  // Update playlist details
   update: (playlistId: string, payload: any, token: string) =>
     apiFetch(`/playlists/${playlistId}`, "PUT", payload, token),
 
-  // Add a video to playlist
   addVideo: (playlistId: string, videoId: string, token: string) =>
     apiFetch(`/playlists/${playlistId}/add`, "POST", { videoId }, token),
 
-  // Remove a video from playlist
   removeVideo: (playlistId: string, videoId: string, token: string) =>
     apiFetch(`/playlists/${playlistId}/remove`, "POST", { videoId }, token),
 
-  // Delete playlist
   delete: (playlistId: string, token: string) =>
     apiFetch(`/playlists/${playlistId}`, "DELETE", undefined, token),
 };

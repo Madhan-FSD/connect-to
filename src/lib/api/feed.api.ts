@@ -26,12 +26,15 @@ export const feedApi = {
     return response.json();
   },
 
-  getSubscriptions: (token?: string, page = 1, limit = 20) =>
-    apiFetch(`/feed/subscriptions?page=${page}&limit=${limit}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    }),
+  getSubscriptionsFeed: (token?: string, page = 1, limit = 20) =>
+    apiFetch(
+      `${FEED_BASE_URL}/subscriptions?page=${page}&limit=${limit}&refresh=1`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    ),
 };

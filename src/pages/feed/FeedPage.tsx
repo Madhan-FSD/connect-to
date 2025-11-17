@@ -10,7 +10,10 @@ import { VideoCard } from "@/components/card/VideoCard";
 import { PostCard } from "@/components/card/PostCard";
 
 const renderItem = (item: Post) => {
-  if (item.contentType === "VIDEO_CHANNEL") {
+  if (
+    item.contentType === "VIDEO_CHANNEL" ||
+    item.contentType === "VIDEO_PROFILE"
+  ) {
     return <VideoCard key={item._id} post={item} />;
   }
   return <PostCard key={item._id} post={item} />;
@@ -20,13 +23,22 @@ export default function FeedPage() {
   const user = getAuth();
   const initialTab = "personalized";
 
-  const { personalized, explore, trending, activeTab, setActiveTab, error } =
-    useFeedData(initialTab, user?.token || "");
+  const {
+    personalized,
+    subscriptions,
+    explore,
+    trending,
+    activeTab,
+    setActiveTab,
+    error,
+  } = useFeedData(initialTab, user?.token || "");
 
   const currentFeed = useMemo(() => {
     switch (activeTab) {
       case "personalized":
         return personalized;
+      case "subscriptions":
+        return subscriptions;
       case "explore":
         return explore;
       case "trending":
@@ -34,20 +46,14 @@ export default function FeedPage() {
       default:
         return personalized;
     }
-  }, [activeTab, personalized, explore, trending]);
+  }, [activeTab, personalized, subscriptions, explore, trending]);
 
   const normalizedTrendingItems = useMemo(() => {
     if (!Array.isArray(trending.items) && trending.items) {
       const videos = trending.items.videos || [];
       const posts = trending.items.posts || [];
-
-      if (videos.length === 0 && posts.length === 0) {
-        return [];
-      }
-
       return [...posts, ...videos];
     }
-
     return Array.isArray(trending.items) ? trending.items : [];
   }, [trending.items]);
 
@@ -55,7 +61,6 @@ export default function FeedPage() {
     if (activeTab === "trending") {
       return normalizedTrendingItems.length;
     }
-
     return Array.isArray(currentFeed.items) ? currentFeed.items.length : 0;
   }, [activeTab, currentFeed.items, normalizedTrendingItems]);
 
@@ -89,26 +94,35 @@ export default function FeedPage() {
         <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+            onValueChange={(value) => setActiveTab(value as any)}
             className="w-full"
           >
             <div className="bg-card border border-border rounded-lg mb-4 sticky top-0 z-10 shadow-sm">
-              <TabsList className="w-full grid grid-cols-3 h-auto p-0 bg-transparent">
+              <TabsList className="w-full grid grid-cols-4 h-auto p-0 bg-transparent">
                 <TabsTrigger
                   value="personalized"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3 sm:py-4 text-xs sm:text-sm font-semibold"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary py-3 sm:py-4 text-xs sm:text-sm font-semibold"
                 >
-                  For you
+                  For You
                 </TabsTrigger>
+
+                <TabsTrigger
+                  value="subscriptions"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary py-3 sm:py-4 text-xs sm:text-sm font-semibold"
+                >
+                  Subscriptions
+                </TabsTrigger>
+
                 <TabsTrigger
                   value="explore"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3 sm:py-4 text-xs sm:text-sm font-semibold"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary py-3 sm:py-4 text-xs sm:text-sm font-semibold"
                 >
                   Explore
                 </TabsTrigger>
+
                 <TabsTrigger
                   value="trending"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3 sm:py-4 text-xs sm:text-sm font-semibold"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary py-3 sm:py-4 text-xs sm:text-sm font-semibold"
                 >
                   Trending
                 </TabsTrigger>
@@ -123,64 +137,41 @@ export default function FeedPage() {
                     Loading your personalized feed...
                   </p>
                 </div>
-              ) : currentFeedItemsCount === 0 ? (
-                <div className="text-center py-12 sm:py-20">
-                  <p className="text-base sm:text-lg text-muted-foreground mb-4">
-                    No posts to show yet
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Start following people to see their posts here
-                  </p>
-                </div>
               ) : (
-                <div className="space-y-0">
+                <div className="space-y-3">
                   {Array.isArray(personalized.items) &&
                     personalized.items.map((item) => renderItem(item))}
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="explore" className="mt-0">
-              {explore.isLoading && currentFeedItemsCount === 0 ? (
+            <TabsContent value="subscriptions" className="mt-0">
+              {subscriptions.isLoading && currentFeedItemsCount === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 sm:py-20">
                   <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary mb-4" />
                   <p className="text-sm sm:text-base text-muted-foreground">
-                    Exploring content...
-                  </p>
-                </div>
-              ) : currentFeedItemsCount === 0 ? (
-                <div className="text-center py-12 sm:py-20">
-                  <p className="text-base sm:text-lg text-muted-foreground">
-                    No posts available to explore
+                    Loading subscribed content...
                   </p>
                 </div>
               ) : (
-                <div className="space-y-0">
-                  {Array.isArray(explore.items) &&
-                    explore.items.map((item) => renderItem(item))}
+                <div className="space-y-3">
+                  {Array.isArray(subscriptions.items) &&
+                    subscriptions.items.map((item) => renderItem(item))}
                 </div>
               )}
             </TabsContent>
 
+            <TabsContent value="explore" className="mt-0">
+              <div className="space-y-3">
+                {Array.isArray(explore.items) &&
+                  explore.items.map((item) => renderItem(item))}
+              </div>
+            </TabsContent>
+
             <TabsContent value="trending" className="mt-0">
-              {trending.isLoading && normalizedTrendingItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 sm:py-20">
-                  <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary mb-4" />
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    Loading trending content...
-                  </p>
-                </div>
-              ) : normalizedTrendingItems.length === 0 ? (
-                <div className="text-center py-12 sm:py-20">
-                  <p className="text-base sm:text-lg text-muted-foreground">
-                    No trending posts at the moment
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-0">
-                  {normalizedTrendingItems.map((item) => renderItem(item))}
-                </div>
-              )}
+              <div className="space-y-3">
+                {normalizedTrendingItems.map((item) => renderItem(item))}
+              </div>
             </TabsContent>
           </Tabs>
         </div>

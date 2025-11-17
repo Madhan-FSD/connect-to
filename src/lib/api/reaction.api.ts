@@ -30,7 +30,7 @@ export const reactionApi = {
       throw new Error(error?.error || "Failed to toggle reaction");
     }
 
-    return response.json(); // returns { message, counts, totalReactions, userReaction }
+    return response.json();
   },
 
   /**

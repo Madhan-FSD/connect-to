@@ -16,7 +16,13 @@ import { toast } from "sonner";
 import { postApi } from "@/lib/api";
 import { reactionApi } from "@/lib/api/reaction.api";
 import { motion, AnimatePresence } from "framer-motion";
-import { Comment, Post, User } from "@/utils/post.interface";
+// FIX 7: Update import names to match the export in post.interface
+import {
+  Comment,
+  Post as PostInterface,
+  User,
+  Owner,
+} from "@/utils/post.interface";
 import { useNavigate } from "react-router-dom";
 
 const REACTIONS = [
@@ -26,12 +32,12 @@ const REACTIONS = [
   { type: "INSIGHTFUL", emoji: "💡", label: "Insightful" },
 ];
 
-const isUserObject = (owner: User | string | undefined): owner is User => {
+const isOwnerObject = (owner: Owner | string | undefined): owner is Owner => {
   return typeof owner === "object" && owner !== null && "_id" in owner;
 };
 
 interface PostCardProps {
-  post: Post;
+  post: PostInterface; // Use the imported PostInterface
 }
 
 export function PostCard({ post }: PostCardProps) {
@@ -41,24 +47,35 @@ export function PostCard({ post }: PostCardProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [expanded, setExpanded] = useState(false);
+  // FIX 9: The Post interface doesn't define `userReaction` or `reactionsCount`.
+  // Assuming the API returns these fields or they are properties added to the Post object
+  // during hydration/retrieval. We'll add temporary optional types to PostInterface
+  // for these fields in post.interface.ts for now, but a more robust fix would be
+  // to define a `PostWithUserData` interface if possible.
   const [selectedReaction, setSelectedReaction] = useState<string | null>(
-    post.userReaction || null
+    (post as any).userReaction || null
   );
-  const [reactionCount, setReactionCount] = useState(post.reactionsCount || 0);
+  const [reactionCount, setReactionCount] = useState(
+    (post as any).reactionsCount || 0
+  );
   const [showPicker, setShowPicker] = useState(false);
 
-  const owner = isUserObject(post.ownerId) ? post.ownerId : post.author;
+  // FIX 10: Simplify owner logic. Post.ownerId is of type Owner.
+  // The original code `isUserObject(post.ownerId) ? post.ownerId : post.author` is redundant
+  // and relies on a non-existent `post.author` field.
+  const owner = post.ownerId; // Assumes ownerId is a populated Owner object
   const displayName =
-    owner?.name ||
-    `${owner?.firstName || ""} ${owner?.lastName || ""}`.trim() ||
-    owner?.email ||
-    "User";
+    owner?.firstName || owner?.lastName
+      ? `${owner.firstName || ""} ${owner.lastName || ""}`.trim()
+      : owner?.email || "User";
 
   const handleCardClick = () => {
-    if (post.targetType === "CHANNEL" && post.channel?.handle) {
-      navigate(`/channel/${post.channel.handle}`);
-    } else if (owner?.handle) {
-      navigate(`/profile/${owner.handle}`);
+    // FIX 11: Use post.channelHandle for channel navigation. The targetType is not needed.
+    if (post.channelHandle) {
+      navigate(`/channel/${post.channelHandle}`);
+    } else if ((owner as any)?.handle) {
+      // owner is of type Owner which may not have 'handle', casting as any for now
+      navigate(`/profile/${(owner as any).handle}`);
     }
   };
 
@@ -68,29 +85,36 @@ export function PostCard({ post }: PostCardProps) {
       return;
     }
 
+    const previousReaction = selectedReaction;
     const newReaction = selectedReaction === type ? null : type;
+
+    // Optimistic Update
     setSelectedReaction(newReaction);
     setReactionCount(
-      (prev) => prev + (newReaction ? (selectedReaction ? 0 : 1) : -1)
+      (prev) => prev + (newReaction ? (previousReaction ? 0 : 1) : -1)
     );
 
     try {
       await reactionApi.toggleReaction("Post", post._id, type, user.token);
     } catch (error) {
       console.error("Error toggling reaction:", error);
-      setSelectedReaction(selectedReaction);
-      setReactionCount(post.reactionsCount || 0);
+      // Revert on failure
+      setSelectedReaction(previousReaction);
+      setReactionCount((post as any).reactionsCount || 0); // Revert to initial count
       toast.error("Failed to update reaction");
     }
   };
 
   const toggleComments = async () => {
-    if (!showComments && comments.length === 0 && user?.token) {
+    const shouldLoad = !showComments && comments.length === 0 && user?.token;
+
+    if (shouldLoad) {
       try {
         const data = await postApi.getComments(post._id, user.token);
         setComments(data || []);
       } catch (error) {
         console.error("Error loading comments:", error);
+        toast.error("Failed to load comments");
       }
     }
     setShowComments(!showComments);
@@ -99,18 +123,23 @@ export function PostCard({ post }: PostCardProps) {
   const handleComment = async () => {
     if (!commentText.trim() || !user?.token) return;
 
+    const content = commentText.trim();
+    setCommentText(""); // Clear input immediately
+
     try {
       const newComment = await postApi.addComment(
         post._id,
-        commentText,
+        content,
         user.token
       );
-      setComments([newComment, ...comments]);
-      setCommentText("");
+      // Prepend the new comment to the list
+      setComments((prev) => [newComment, ...prev]);
       toast.success("Comment added");
     } catch (error) {
       console.error("Error adding comment:", error);
+      // Revert on failure if needed, or just keep the input cleared
       toast.error("Failed to add comment");
+      setCommentText(content); // Restore input for user to retry
     }
   };
 
@@ -129,11 +158,12 @@ export function PostCard({ post }: PostCardProps) {
           >
             <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
               <AvatarImage
-                src={owner?.avatarUrl || owner?.avatar}
+                // FIX 12: Use owner?.avatar?.url as the fallback for owner avatar
+                src={(owner as any)?.avatarUrl || owner?.avatar?.url}
                 alt={displayName}
               />
               <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                {displayName[0]?.toUpperCase()}
+                {displayName[0]?.toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
 
@@ -148,9 +178,11 @@ export function PostCard({ post }: PostCardProps) {
               )}
               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                 <span>
-                  {formatDistanceToNow(new Date(post.createdAt), {
-                    addSuffix: true,
-                  })}
+                  {/* Ensure post.createdAt is a valid date string */}
+                  {post.createdAt &&
+                    formatDistanceToNow(new Date(post.createdAt), {
+                      addSuffix: true,
+                    })}
                 </span>
                 <span>•</span>
                 <Globe className="h-3 w-3" />
@@ -185,10 +217,13 @@ export function PostCard({ post }: PostCardProps) {
         </div>
       </div>
 
-      {post.mediaUrls && post.mediaUrls.length > 0 && (
+      {/* FIX 13: The Post interface defines 'mediaUrl' and 'thumbnailUrl' but not 'mediaUrls' as an array.
+      If a regular post has media, it should use 'post.mediaUrl' or be adjusted in the interface.
+      Assuming 'mediaUrl' is the correct field for a single image/post media. */}
+      {post.mediaUrl && (
         <div className="w-full">
           <img
-            src={post.mediaUrls[0]}
+            src={post.mediaUrl}
             alt="Post media"
             className="w-full object-cover max-h-[500px]"
           />
@@ -234,14 +269,17 @@ export function PostCard({ post }: PostCardProps) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-full shadow-lg px-2 py-1 flex gap-1 z-10"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-card border border-border rounded-full shadow-lg px-2 py-1 flex gap-1 z-10"
                   onMouseEnter={() => setShowPicker(true)}
                   onMouseLeave={() => setShowPicker(false)}
                 >
                   {REACTIONS.map((reaction) => (
                     <button
                       key={reaction.type}
-                      onClick={() => handleReaction(reaction.type)}
+                      onClick={() => {
+                        handleReaction(reaction.type);
+                        setShowPicker(false);
+                      }}
                       className="hover:scale-125 transition-transform text-xl p-1"
                       title={reaction.label}
                     >
@@ -294,7 +332,7 @@ export function PostCard({ post }: PostCardProps) {
                 <Avatar className="h-8 w-8 flex-shrink-0">
                   <AvatarImage src={user?.avatar} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                    {user?.name?.[0]?.toUpperCase()}
+                    {user?.name?.[0]?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 flex gap-2">
@@ -317,26 +355,29 @@ export function PostCard({ post }: PostCardProps) {
               </div>
 
               {comments.map((comment) => {
-                const commentOwner = isUserObject(comment.ownerId)
+                // FIX 14: Use isOwnerObject for comments since comment.ownerId is of type Owner
+                const commentOwner = isOwnerObject(comment.ownerId)
                   ? comment.ownerId
-                  : comment.author;
+                  : undefined;
                 const commentOwnerName =
-                  commentOwner?.name ||
-                  `${commentOwner?.firstName || ""} ${
-                    commentOwner?.lastName || ""
-                  }`.trim() ||
-                  commentOwner?.email ||
-                  "User";
+                  commentOwner?.firstName || commentOwner?.lastName
+                    ? `${commentOwner.firstName || ""} ${
+                        commentOwner.lastName || ""
+                      }`.trim()
+                    : commentOwner?.email || "User";
 
                 return (
                   <div key={comment._id} className="flex gap-2">
                     <Avatar className="h-8 w-8 flex-shrink-0">
                       <AvatarImage
-                        src={commentOwner?.avatarUrl || commentOwner?.avatar}
+                        src={
+                          (commentOwner as any)?.avatarUrl ||
+                          commentOwner?.avatar?.url
+                        }
                         alt={commentOwnerName}
                       />
                       <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                        {commentOwnerName[0]?.toUpperCase()}
+                        {commentOwnerName[0]?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 bg-muted rounded-2xl px-3 py-2">
@@ -348,9 +389,10 @@ export function PostCard({ post }: PostCardProps) {
                         <button className="hover:underline">Like</button>
                         <button className="hover:underline">Reply</button>
                         <span>
-                          {formatDistanceToNow(new Date(comment.createdAt), {
-                            addSuffix: true,
-                          })}
+                          {comment.createdAt &&
+                            formatDistanceToNow(new Date(comment.createdAt), {
+                              addSuffix: true,
+                            })}
                         </span>
                       </div>
                     </div>

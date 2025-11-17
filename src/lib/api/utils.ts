@@ -2,35 +2,33 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 import { toast } from "sonner";
 
-export const apiFetch = async (url: string, options?: RequestInit) => {
-  try {
-    const response = await fetch(url, options);
+export const apiFetch = async (url: string, options: RequestInit = {}) => {
+  const noCacheUrl = `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}`;
 
-    if (response.status === 204) return {};
+  const response = await fetch(noCacheUrl, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      ...(options.headers || {}),
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
 
-    const data = await response.json().catch(() => ({}));
+  if (response.status === 204) return {};
 
-    if (!response.ok) {
-      const errorMessage =
-        data.error || data.message || `API Error (${response.status})`;
-      toast.error(errorMessage);
-      throw new Error(errorMessage);
-    }
+  const data = await response.json().catch(() => ({}));
 
-    if (data?.message) {
-      toast.success(data.message);
-    }
-
-    return data;
-  } catch (err: any) {
-    console.error("apiFetch error:", err);
-    if (!err.message?.includes("Failed to fetch")) {
-      toast.error(err.message || "An unknown error occurred.");
-    } else {
-      toast.error("Network error: Check your internet or server.");
-    }
-    throw err;
+  if (!response.ok) {
+    const msg = data.error || data.message || `API Error (${response.status})`;
+    toast.error(msg);
+    throw new Error(msg);
   }
+
+  if (data?.message) toast.success(data.message);
+
+  return data;
 };
 
 export const uploadFile = async (
