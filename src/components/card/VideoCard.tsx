@@ -2,19 +2,25 @@ import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Globe, Play, Volume2, VolumeX, Lock } from "lucide-react";
+import { Globe, Play, Volume2, VolumeX, Lock, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Post as PostInterface, User } from "@/utils/post.interface";
 import { useNavigate } from "react-router-dom";
 import { PostCard } from "./PostCard";
 import { ReactionsSummary } from "@/components/reactions/ReactionsSummary";
 import { ReactionsBar } from "@/components/reactions/ReactionsBar";
+import { getAuth } from "@/lib/auth";
+import { channelvideosApi } from "@/lib/api";
 
-export function VideoCard({ post }: { post: PostInterface }) {
+export function VideoCard({ post }) {
   const navigate = useNavigate();
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const token = getAuth()?.token;
+  const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [dynamicMediaUrl, setDynamicMediaUrl] = useState(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+  const [errorUrl, setErrorUrl] = useState(null);
 
   if (
     post.contentType !== "VIDEO_CHANNEL" &&
@@ -22,7 +28,7 @@ export function VideoCard({ post }: { post: PostInterface }) {
   )
     return <PostCard post={post} />;
 
-  const owner = post.ownerId as User;
+  const owner = post.ownerId;
   const displayName = post.channelName || owner?.firstName || "Channel";
 
   const actionButtonText =
@@ -34,12 +40,38 @@ export function VideoCard({ post }: { post: PostInterface }) {
     else if (owner?.handle) navigate(`/profile/${owner.handle}`);
   };
 
+  const isPaidOnly = post.visibility === "PAID_ONLY";
+
+  const fetchSecureUrl = async () => {
+    if (!token || !post._id || dynamicMediaUrl || isLoadingUrl) return;
+
+    setIsLoadingUrl(true);
+    setErrorUrl(null);
+    try {
+      const response = await channelvideosApi.getPlaybackUrl(post._id, token);
+      setDynamicMediaUrl(response.secureUrl);
+    } catch (err) {
+      setErrorUrl("Access Denied or Failed to load video.");
+    } finally {
+      setIsLoadingUrl(false);
+    }
+  };
+
   const play = () => {
-    if (!videoRef.current) return;
-    isPlaying
-      ? videoRef.current.pause()
-      : videoRef.current.play().catch(() => {});
-    setIsPlaying(!isPlaying);
+    if (!videoRef.current || isLoadingUrl || errorUrl) return;
+
+    if (isPaidOnly && !dynamicMediaUrl) {
+      fetchSecureUrl();
+      return;
+    }
+
+    if (videoRef.current.paused || videoRef.current.ended) {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
   };
 
   const mute = () => {
@@ -48,7 +80,11 @@ export function VideoCard({ post }: { post: PostInterface }) {
     setIsMuted(!isMuted);
   };
 
-  const mediaUrl = post.secureUrl || post.mediaUrl;
+  let finalMediaUrl = post.secureUrl || post.mediaUrl;
+
+  if (dynamicMediaUrl) {
+    finalMediaUrl = dynamicMediaUrl;
+  }
 
   const visibility = post.visibility;
   let visibilityIcon;
@@ -68,11 +104,38 @@ export function VideoCard({ post }: { post: PostInterface }) {
     visibilityText = "Private";
   }
 
+  let overlayContent = null;
+  if (isPaidOnly && !dynamicMediaUrl) {
+    if (isLoadingUrl) {
+      overlayContent = (
+        <Loader2 className="h-10 w-10 text-white animate-spin" />
+      );
+    } else if (errorUrl) {
+      overlayContent = (
+        <span className="text-white bg-red-700/80 p-2 rounded">{errorUrl}</span>
+      );
+    } else {
+      overlayContent = (
+        <div className="flex flex-col items-center gap-2">
+          <Lock className="h-10 w-10 text-white" />
+          <span className="text-white font-semibold text-lg">
+            {post.isSubscribed ? "Tap to Play" : "Paid Content"}
+          </span>
+        </div>
+      );
+    }
+  } else if (!isPlaying) {
+    overlayContent = (
+      <div className="bg-white/90 rounded-full p-4">
+        <Play className="h-8 w-8 text-primary" />
+      </div>
+    );
+  }
+
   return (
     <Card className="max-w-[700px] mx-auto w-full bg-card border border-border rounded-lg overflow-hidden">
       <div className="p-3 sm:p-4">
         <div className="flex items-center justify-between pb-3 mb-2 border-b border-border">
-          {/* Left Side: Avatar and Info */}
           <div
             className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
             onClick={go}
@@ -126,11 +189,11 @@ export function VideoCard({ post }: { post: PostInterface }) {
         )}
       </div>
 
-      {mediaUrl && (
+      {finalMediaUrl && (
         <div className="relative bg-black">
           <video
             ref={videoRef}
-            src={mediaUrl}
+            src={finalMediaUrl}
             poster={post.thumbnailUrl}
             className="w-full max-h-[400px] object-contain"
             muted={isMuted}
@@ -138,27 +201,27 @@ export function VideoCard({ post }: { post: PostInterface }) {
             onClick={play}
           />
 
-          {!isPlaying && (
+          {(!isPlaying || (isPaidOnly && !dynamicMediaUrl)) && (
             <button
-              className="absolute inset-0 flex items-center justify-center bg-black/30"
+              className="absolute inset-0 flex items-center justify-center bg-black/50 z-10"
               onClick={play}
             >
-              <div className="bg-white/90 rounded-full p-4">
-                <Play className="h-8 w-8 text-primary" />
-              </div>
+              {overlayContent}
             </button>
           )}
 
-          <button
-            onClick={mute}
-            className="absolute bottom-4 right-4 bg-black/60 rounded-full p-2"
-          >
-            {isMuted ? (
-              <VolumeX className="h-5 w-5 text-white" />
-            ) : (
-              <Volume2 className="h-5 w-5 text-white" />
-            )}
-          </button>
+          {(!isPaidOnly || dynamicMediaUrl) && (
+            <button
+              onClick={mute}
+              className="absolute bottom-4 right-4 bg-black/60 rounded-full p-2 z-20"
+            >
+              {isMuted ? (
+                <VolumeX className="h-5 w-5 text-white" />
+              ) : (
+                <Volume2 className="h-5 w-5 text-white" />
+              )}
+            </button>
+          )}
         </div>
       )}
 

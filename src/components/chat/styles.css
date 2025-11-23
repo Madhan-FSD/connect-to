@@ -1,0 +1,76 @@
+/* WhatsAppWeb look - background pattern and a few helpers */
+:root {
+  --wa-green: #dcf8c6;
+  --wa-incoming-bg: #ffffff;
+  --wa-border: #e6e6e6;
+  --wa-muted: #9aa0a6;
+  --wa-timestamp: #6b6b6b;
+}
+
+/* background pattern (light beige doodles) - small SVG as data URI */
+.wa-bg {
+  background-color: #f0efe9;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23f0efe9'/%3E%3Cpath d='M30 80c40-30 90-20 120 10s40 90 10 120-90 40-120 10-40-90-10-120z' fill='%23efe9dc' opacity='0.6'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 380px;
+}
+
+/* whatsapp-style outgoing bubble: green with sharp top-right */
+.wa-bubble-out {
+  background: var(--wa-green);
+  color: #000;
+  border-radius: 16px;
+  border-top-right-radius: 4px; /* sharp corner */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* whatsapp-style incoming bubble: white with subtle border and sharp top-left */
+.wa-bubble-in {
+  background: var(--wa-incoming-bg);
+  border-radius: 16px;
+  border-top-left-radius: 4px;
+  border: 1px solid var(--wa-border);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+/* small timestamp text inside bubble */
+.wa-ts {
+  font-size: 11px;
+  color: var(--wa-timestamp);
+  line-height: 1;
+}
+
+/* small read ticks */
+.wa-ticks {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+  vertical-align: middle;
+  margin-left: 6px;
+  fill: #6b6b6b;
+}
+
+/* bubble max width control */
+.wa-max-w {
+  max-width: 65%;
+}
+
+/* day separator */
+.wa-day {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: white;
+  color: #7d8892;
+  font-size: 12px;
+  border: 1px solid #eee;
+}
+
+/* small hover action container */
+.wa-hover-actions {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.wa-wrap:hover .wa-hover-actions {
+  opacity: 1;
+}

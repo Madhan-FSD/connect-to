@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Bookmark } from "lucide-react";
+import { Heart, Bookmark, ChevronRight } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 interface ProfileCardProps {
   id?: string;
@@ -18,6 +19,7 @@ interface ProfileCardProps {
   onMessage?: (id: string) => void;
   onLike?: (id: string) => void;
   onSave?: (id: string) => void;
+  status: string;
 }
 
 export function ProfileCard({
@@ -35,7 +37,9 @@ export function ProfileCard({
   onMessage,
   onLike,
   onSave,
+  status,
 }: ProfileCardProps) {
+  const navigate = useNavigate();
   const safeName =
     name?.trim() ||
     [firstName, lastName].filter(Boolean).join(" ").trim() ||
@@ -127,6 +131,14 @@ export function ProfileCard({
             <Bookmark className="h-4 w-4" />
           </Button>
 
+          <Button
+            onClick={() => safeId && navigate(`/users/profile/${safeId}`)}
+            className="rounded-full h-9 px-4 bg-primary text-white hover:bg-primary/90 flex items-center"
+          >
+            View Profile
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+
           {isConnected ? (
             <Button
               onClick={() => safeId && onMessage?.(safeId)}
@@ -137,9 +149,11 @@ export function ProfileCard({
           ) : (
             <Button
               onClick={() => safeId && onConnect?.(safeId)}
-              className="rounded-full h-9 px-6 bg-gray-900 text-white hover:bg-gray-800"
+              className={`rounded-full h-9 px-6 text-white hover:bg-gray-800 ${
+                status === "PENDING" ? "bg-green-800" : "bg-gray-800"
+              }`}
             >
-              Connect
+              {status === "PENDING" ? "Accept" : "Connect"}
             </Button>
           )}
         </div>

@@ -22,6 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { authApi } from "@/lib/api";
+import { chatApi } from "@/lib/api/chat.api";
+import { getDeviceType } from "@/utils/getDevicetype";
+import { getFCMToken } from "@/lib/firebaseFCM";
 
 type LoginStep = "email" | "otp" | "child-select";
 
@@ -124,6 +127,27 @@ export const Login = () => {
           children: result.children,
           channel: result.channel,
         });
+
+        try {
+          const currentFCMToken = await getFCMToken();
+          const lastRegisteredToken = localStorage.getItem(
+            "fcm_registered_token"
+          );
+
+          const device = getDeviceType();
+
+          if (currentFCMToken && currentFCMToken !== lastRegisteredToken) {
+            await chatApi.registerFcmToken(currentFCMToken, device);
+
+            localStorage.setItem("fcm_registered_token", currentFCMToken);
+            console.log(
+              `FCM token registered successfully for device: ${device}`
+            );
+          }
+        } catch (fcmError) {
+          console.error("FCM Registration Failed:", fcmError);
+        }
+
         toast({
           title: "Welcome back!",
           description: "Login successful",

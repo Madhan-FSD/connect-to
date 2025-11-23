@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
@@ -10,6 +10,7 @@ import {
   Users,
   Gamepad2,
   Newspaper,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAuth, clearAuth } from "@/lib/auth";
@@ -48,6 +49,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const coreItems = [
     { icon: Newspaper, label: "Feed", path: "/feeds" },
     { icon: Users, label: "Network", path: "/network" },
+    { icon: MessageCircle, label: "Chat", path: "/chat" },
     { icon: User, label: "Profile", path: "/profile" },
     { icon: Plus, label: "Channel", path: "/create-channel" },
     { icon: Sparkles, label: "AI Hub", path: "/ai-hub" },
@@ -78,7 +80,6 @@ export const Layout = ({ children }: LayoutProps) => {
             <nav className="hidden md:flex items-center space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-
                 const isActive =
                   location.pathname === item.path ||
                   (item.path === "/" && location.pathname === "/dashboard") ||
@@ -152,7 +153,7 @@ export const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">{children}</main>
+      <main className="container mx-auto">{children}</main>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background">
         <div className="grid grid-cols-5 gap-1 p-2">

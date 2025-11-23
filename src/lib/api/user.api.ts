@@ -48,6 +48,11 @@ export const userApi = {
     }),
 
   profile: {
+    getProfileById: (token: string, userId: string) =>
+      apiFetch(`${PROFILE_API_BASE_URL}/${userId}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
     core: {
       get: (token: string) =>
         apiFetch(`${PROFILE_API_BASE_URL}/`, {

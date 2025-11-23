@@ -533,7 +533,7 @@ export default function ProfileDetailsManager({
                     <div className="flex gap-2">
                       <Input
                         id="core-mobile-cc"
-                        value={formData.mobile?.countryCode || "+91"}
+                        value={formData.mobile?.countryCode || ""}
                         onChange={(e) =>
                           handleChange("mobile.countryCode", e.target.value)
                         }

@@ -5,13 +5,11 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
-import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import CreateChannel from "./pages/CreateChannel";
 import AddChild from "./pages/AddChild";
-import ChildDetails from "./pages/ChildDetails";
-import Network from "./pages/Network";
+import Network from "./pages/network/Network";
 import { Login } from "./pages/auth/Login";
 import { Signup } from "./pages/auth/Signup";
 import { VerifyOtp } from "./pages/auth/VerifyOtp";
@@ -26,6 +24,8 @@ import SubscriptionsPage from "./pages/channel/SubscriptionPage";
 import ChannelSettings from "./pages/channel/ChannelSettings";
 import ChannelAnalyticsPage from "./pages/channel/ChannelAnalytics";
 import FeedPage from "./pages/feed/FeedPage";
+import { ChatWidget } from "./components/chat/ChatWidget";
+import ViewProfile from "./pages/profile/ViewProfile";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return isAuthenticated() ? <>{children}</> : <Navigate to="/auth/login" />;
@@ -33,13 +33,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ChatWidget />
       <Routes>
         <Route
           path="/feeds"
           element={
             <ProtectedRoute>
               <FeedPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users/profile/:id"
+          element={
+            <ProtectedRoute>
+              <ViewProfile />
             </ProtectedRoute>
           }
         />

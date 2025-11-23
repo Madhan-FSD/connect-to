@@ -153,7 +153,7 @@ export const aiApi = {
       userChoice: string,
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/ai/games/story-adventure`, {
+      apiFetch(`${API_BASE_URL}/ai/games/story-adventure`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -168,7 +168,7 @@ export const aiApi = {
       category: string,
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/ai/games/word-master`, {
+      apiFetch(`${API_BASE_URL}/ai/games/word-master`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -183,7 +183,7 @@ export const aiApi = {
       topics: string[],
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/ai/games/math-challenge`, {
+      apiFetch(`${API_BASE_URL}/ai/games/math-challenge`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -197,7 +197,7 @@ export const aiApi = {
       difficulty: string,
       token: string
     ) =>
-      await apiFetch(`${API_BASE_URL}/ai/games/code-detective`, {
+      apiFetch(`${API_BASE_URL}/ai/games/code-detective`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -276,6 +276,34 @@ export const aiApi = {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ puzzleType, puzzlesWithAnswers }),
+      }),
+
+    generateObjectBuilder: async (
+      theme: string,
+      partsCount: number,
+      token: string
+    ) =>
+      apiFetch(`${API_BASE_URL}/ai/games/object-builder/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ theme, partsCount }),
+      }),
+
+    submitObjectBuilder: async (
+      childId: string,
+      attempts: any[],
+      token: string
+    ) =>
+      apiFetch(`${API_BASE_URL}/ai/games/object-builder/${childId}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ attempts }),
       }),
   },
 };

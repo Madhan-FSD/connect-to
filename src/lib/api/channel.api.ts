@@ -1,27 +1,35 @@
 import { API_BASE_URL } from "./utils";
 
-export const apiFetch = async (
+export const apiFetch = async <T>(
   path: string,
   method = "GET",
   body?: any,
   token?: string
-) => {
+): Promise<T> => {
   const headers: Record<string, string> = {};
 
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  if (!(body instanceof FormData) && body) {
+  if (!(body instanceof FormData) && body !== undefined && body !== null) {
     headers["Content-Type"] = "application/json";
   }
+
+  const requestBody =
+    method === "GET" || method === "HEAD"
+      ? undefined
+      : body instanceof FormData
+      ? body
+      : body !== undefined && body !== null
+      ? JSON.stringify(body)
+      : undefined;
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body:
-      body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    body: requestBody,
   });
 
-  if (res.status === 204) return null;
+  if (res.status === 204) return null as T;
 
   let json: any;
   try {
@@ -41,7 +49,7 @@ export const apiFetch = async (
     throw err;
   }
 
-  return json;
+  return json as T;
 };
 
 export const channelApi = {
@@ -176,6 +184,13 @@ export const channelvideosApi = {
     apiFetch(`/videos/upload`, "POST", form, token),
   watch: (videoId: string, token: string) =>
     apiFetch(`/videos/${videoId}/watch`, "POST", undefined, token),
+  getPlaybackUrl: (videoId: string, token: string) =>
+    apiFetch<{ secureUrl: string }>(
+      `/videos/${videoId}/play`,
+      "GET",
+      null,
+      token
+    ),
 };
 
 export const channelplaylistApi = {
